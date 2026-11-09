@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { CourseSidebar } from "../library/CourseSidebar";
+import { AnnotationPanel } from "../annotations/AnnotationPanel";
+import type { Annotation } from "../annotations/types";
+import {
+  annotationDocumentId,
+  parseAnnotationsImport,
+  serializeAnnotations,
+} from "../annotations/service";
 import type { CourseAdapter, CourseSnapshot, ResourceRecord } from "../platform/xiaoya/types";
 import { ResourceViewer } from "../reader/ResourceViewer";
 import { saveBlob, DownloadQueue, type DownloadTask } from "../downloads/queue";
-import { coursesRepository, settingsRepository } from "../storage/repositories";
+import {
+  annotationRepository,
+  coursesRepository,
+  settingsRepository,
+} from "../storage/repositories";
 import {
   CloseIcon,
   DownloadIcon,
+  ExpandIcon,
   MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
@@ -41,6 +53,11 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
   const [rightOpen, setRightOpen] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [focusAnnotationId, setFocusAnnotationId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusModePanels, setFocusModePanels] = useState({ left: true, right: true });
 
   const selectedResource = useMemo(
     () => course?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
@@ -122,6 +139,101 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     }
   }, [course, selectedResourceId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setAnnotations([]);
+    setSelectedAnnotationId(null);
+    setFocusAnnotationId(null);
+    if (!selectedResource) return;
+    const documentId = annotationDocumentId(selectedResource.courseId, selectedResource.id);
+    void annotationRepository
+      .listByDocument(documentId)
+      .then((items) => {
+        if (!cancelled) setAnnotations(items);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedResource?.id, selectedResource?.courseId]);
+
+  const saveAnnotation = async (annotation: Annotation) => {
+    await annotationRepository.put(annotation);
+    setAnnotations((items) => {
+      const next = items.filter((item) => item.id !== annotation.id);
+      next.push(annotation);
+      return next;
+    });
+    setSelectedAnnotationId(annotation.id);
+  };
+
+  const selectAnnotation = (annotation: Annotation | null) => {
+    setSelectedAnnotationId(annotation?.id ?? null);
+    if (!annotation) return;
+    setFocusAnnotationId(null);
+    window.setTimeout(() => setFocusAnnotationId(annotation.id), 0);
+  };
+
+  const updateAnnotationNote = (annotation: Annotation, note: string) => {
+    const updated = { ...annotation, note, updatedAt: new Date().toISOString() };
+    void saveAnnotation(updated);
+  };
+
+  const deleteAnnotation = (annotation: Annotation) => {
+    void annotationRepository.delete(annotation.id);
+    setAnnotations((items) => items.filter((item) => item.id !== annotation.id));
+    if (selectedAnnotationId === annotation.id) setSelectedAnnotationId(null);
+  };
+
+  const relocateAnnotations = (
+    updates: Array<{ id: string; page: number; needsRelocation: boolean }>,
+  ) => {
+    setAnnotations((items) => {
+      const updateMap = new Map(updates.map((update) => [update.id, update]));
+      return items.map((item) => {
+        const update = updateMap.get(item.id);
+        if (!update) return item;
+        const next = {
+          ...item,
+          page: update.page,
+          needsRelocation: update.needsRelocation,
+          updatedAt: new Date().toISOString(),
+        };
+        void annotationRepository.put(next);
+        return next;
+      });
+    });
+  };
+
+  const exportAnnotations = () => {
+    if (!selectedResource || annotations.length === 0) return;
+    const filename = `petite-grace-annotations-${selectedResource.id}.json`;
+    saveBlob(new Blob([serializeAnnotations(annotations)], { type: "application/json" }), filename);
+  };
+
+  const importAnnotationsFile = (file: File) => {
+    void file
+      .text()
+      .then(async (text) => {
+        const imported = parseAnnotationsImport(text);
+        await Promise.all(imported.map((annotation) => annotationRepository.put(annotation)));
+        if (!selectedResource) return;
+        const documentId = annotationDocumentId(selectedResource.courseId, selectedResource.id);
+        const current = await annotationRepository.listByDocument(documentId);
+        setAnnotations(current);
+        setNotice({
+          message: `已导入 ${imported.length} 条标注，当前文档 ${current.length} 条`,
+          tone: "info",
+        });
+      })
+      .catch((reason: unknown) => {
+        setNotice({
+          message: reason instanceof Error ? reason.message : "标注导入失败",
+          tone: "error",
+        });
+      });
+  };
+
   const selectChapter = (chapterId: string) => {
     setActiveChapterId(chapterId);
     const nextResource = course?.resources
@@ -149,6 +261,18 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     }
   };
 
+  const toggleFocusMode = () => {
+    if (focusMode) {
+      setLeftOpen(focusModePanels.left);
+      setRightOpen(focusModePanels.right);
+      setFocusMode(false);
+      return;
+    }
+    setFocusModePanels({ left: leftOpen, right: rightOpen });
+    setLeftOpen(false);
+    setRightOpen(false);
+    setFocusMode(true);
+  };
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
@@ -200,6 +324,16 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
             onClick={() => setRightOpen((value) => !value)}
           >
             <PanelRightIcon />
+          </button>
+          <button
+            class={`pg-icon-button${focusMode ? " selected" : ""}`}
+            type="button"
+            title={focusMode ? "退出专注阅读" : "专注阅读"}
+            aria-label={focusMode ? "退出专注阅读" : "专注阅读"}
+            aria-pressed={focusMode}
+            onClick={toggleFocusMode}
+          >
+            <ExpandIcon />
           </button>
           <button
             class="pg-icon-button"
@@ -262,6 +396,12 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
               adapter={adapter}
               onDownload={downloadResource}
               onNotify={(message, tone = "info") => setNotice({ message, tone })}
+              annotations={annotations}
+              selectedAnnotationId={selectedAnnotationId}
+              focusAnnotationId={focusAnnotationId}
+              onCreateAnnotation={saveAnnotation}
+              onSelectAnnotation={selectAnnotation}
+              onRelocateAnnotations={relocateAnnotations}
             />
           </div>
         </main>
@@ -350,6 +490,15 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
                 <p class="pg-badge">{failedDownloads.length} 个任务失败</p>
               ) : null}
             </div>
+            <AnnotationPanel
+              annotations={annotations}
+              selectedAnnotationId={selectedAnnotationId}
+              onSelect={selectAnnotation}
+              onUpdateNote={updateAnnotationNote}
+              onDelete={deleteAnnotation}
+              onExport={exportAnnotations}
+              onImportFile={importAnnotationsFile}
+            />
             <div style={{ marginTop: "auto", color: "var(--pg-text-tertiary)", fontSize: "11px" }}>
               本地优先 · 不上传课程内容 · 不保存登录 Token
             </div>

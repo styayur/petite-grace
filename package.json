@@ -1,6 +1,6 @@
 {
   "name": "petite-grace",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "A lightweight, privacy-first course companion for Xiaoya learning platform.",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@playwright/test": "1.65.0",
     "@types/node": "24.10.1",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "27.0.1",
     "prettier": "3.9.10",
     "typescript": "5.9.3",

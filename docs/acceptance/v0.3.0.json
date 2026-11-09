@@ -1,0 +1,19 @@
+{
+  "version": "0.3.0",
+  "build": "passed",
+  "unit": "passed",
+  "integration": "passed",
+  "e2e": "passed",
+  "security": "passed",
+  "realPlatform": "not_verified",
+  "releaseGate": "blocked",
+  "blockers": ["real-platform-acceptance"],
+  "evidence": {
+    "unitAndIntegrationTests": 20,
+    "e2eTests": 3,
+    "annotationPersistence": "verified by Playwright reload",
+    "annotationZoomStability": "verified by Playwright fit-page switch",
+    "annotationRecovery": "unit-tested for relocated and missing quotes",
+    "realPlatformReason": "Live Xiaoya course access remains blocked by the unavailable browser-control path."
+  }
+}

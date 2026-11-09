@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CourseAdapter, ResourceRecord } from "../platform/xiaoya/types";
+import type { Annotation } from "../annotations/types";
 import { DownloadIcon, FileIcon } from "../ui/icons";
 import { resourceKindLabel } from "../ui/format";
 import { PdfReader } from "./pdf/PdfReader";
@@ -10,6 +11,14 @@ interface ResourceViewerProps {
   adapter: CourseAdapter;
   onDownload: (resource: ResourceRecord) => void | Promise<void>;
   onNotify: (message: string, tone?: "info" | "error") => void;
+  annotations: Annotation[];
+  selectedAnnotationId: string | null;
+  focusAnnotationId: string | null;
+  onCreateAnnotation: (annotation: Annotation) => void | Promise<void>;
+  onSelectAnnotation: (annotation: Annotation | null) => void;
+  onRelocateAnnotations: (
+    updates: Array<{ id: string; page: number; needsRelocation: boolean }>,
+  ) => void | Promise<void>;
 }
 
 function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
@@ -57,7 +66,18 @@ function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
   return { url, loading, error };
 }
 
-export function ResourceViewer({ resource, adapter, onDownload, onNotify }: ResourceViewerProps) {
+export function ResourceViewer({
+  resource,
+  adapter,
+  onDownload,
+  onNotify,
+  annotations,
+  selectedAnnotationId,
+  focusAnnotationId,
+  onCreateAnnotation,
+  onSelectAnnotation,
+  onRelocateAnnotations,
+}: ResourceViewerProps) {
   const image = useImageUrl(resource, adapter);
 
   if (!resource) {
@@ -79,6 +99,12 @@ export function ResourceViewer({ resource, adapter, onDownload, onNotify }: Reso
         adapter={adapter}
         onDownload={onDownload}
         onNotify={onNotify}
+        annotations={annotations}
+        selectedAnnotationId={selectedAnnotationId}
+        focusAnnotationId={focusAnnotationId}
+        onCreateAnnotation={onCreateAnnotation}
+        onSelectAnnotation={onSelectAnnotation}
+        onRelocateAnnotations={onRelocateAnnotations}
       />
     );
   }

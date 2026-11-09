@@ -869,3 +869,209 @@ button {
   border-radius: var(--pg-radius-md);
   box-shadow: var(--pg-shadow-md);
 }
+
+/* Annotations */
+.pg-pdf-page {
+  isolation: isolate;
+}
+
+.pg-highlight-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pg-highlight {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  border-radius: 2px;
+  pointer-events: auto;
+  opacity: 0.72;
+  cursor: pointer;
+  mix-blend-mode: multiply;
+}
+
+.pg-highlight:hover,
+.pg-highlight.selected {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+  opacity: 0.92;
+}
+
+.pg-highlight-yellow,
+.pg-color-yellow {
+  background: var(--pg-highlight-yellow);
+}
+
+.pg-highlight-blue,
+.pg-color-blue {
+  background: var(--pg-highlight-blue);
+}
+
+.pg-highlight-green,
+.pg-color-green {
+  background: var(--pg-highlight-green);
+}
+
+.pg-highlight-pink,
+.pg-color-pink {
+  background: var(--pg-highlight-pink);
+}
+
+.pg-selection-toolbar {
+  position: fixed;
+  z-index: 2147483200;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--pg-border);
+  border-radius: 999px;
+  background: var(--pg-bg-raised);
+  box-shadow: var(--pg-shadow-md);
+  color: var(--pg-text);
+}
+
+.pg-selection-label {
+  font-size: 12px;
+  color: var(--pg-text-secondary);
+  padding-left: 2px;
+}
+
+.pg-color-dot {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--pg-border-strong);
+  border-radius: 50%;
+  padding: 0;
+}
+
+.pg-color-dot:hover {
+  transform: scale(1.12);
+}
+
+.pg-annotation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin-top: 4px;
+}
+
+.pg-annotation-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pg-annotation-actions .pg-button {
+  flex: 1;
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.pg-annotation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 90px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.pg-annotation-item {
+  width: 100%;
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-bg);
+  color: var(--pg-text);
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.pg-annotation-item:hover,
+.pg-annotation-item.selected {
+  border-color: color-mix(in srgb, var(--pg-accent) 45%, var(--pg-border));
+  background: var(--pg-accent-soft);
+}
+
+.pg-annotation-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pg-text-tertiary);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.pg-color-bar {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.pg-annotation-quote {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pg-annotation-note-preview {
+  margin-top: 4px;
+  color: var(--pg-text-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-annotation-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--pg-border);
+  padding-top: 8px;
+}
+
+.pg-annotation-editor .pg-textarea {
+  min-height: 68px;
+  font-size: 12px;
+}
+
+.pg-annotation-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pg-annotation-editor-actions .pg-button {
+  flex: 1;
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.pg-button-danger {
+  color: var(--pg-danger);
+}
+
+.pg-button-danger:hover {
+  border-color: color-mix(in srgb, var(--pg-danger) 40%, var(--pg-border));
+  background: color-mix(in srgb, var(--pg-danger) 8%, transparent);
+}
+
+.pg-muted {
+  color: var(--pg-text-tertiary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.pg-icon-button.selected {
+  background: var(--pg-accent-soft);
+  color: var(--pg-accent);
+  border-color: color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}

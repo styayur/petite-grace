@@ -38,3 +38,24 @@ test("renders a continuous PDF, switches layout and restores progress", async ({
   await expect(page.getByLabel("PDF 页面布局")).toHaveValue("double");
   await expect(page.getByLabel("跳转页码")).toHaveValue("3");
 });
+
+test("creates, edits and restores a PDF highlight annotation", async ({ page }) => {
+  await page.goto("/tests/harness/");
+  const textSpan = page.locator(".pg-pdf-scroll .pg-text-layer span").first();
+  await expect(textSpan).toBeVisible();
+  await textSpan.selectText();
+  await page.locator(".pg-pdf-scroll").dispatchEvent("mouseup");
+  await expect(page.getByRole("toolbar", { name: "划线操作" })).toBeVisible();
+  await page.getByRole("button", { name: "使用yellow划线" }).click();
+  await expect(page.locator(".pg-highlight")).toHaveCount(1);
+  await expect(page.locator(".pg-annotation-item")).toHaveCount(1);
+  await page.getByLabel("PDF 缩放模式").selectOption("fit-page");
+  await expect(page.locator(".pg-highlight")).toBeVisible();
+
+  await page.getByLabel("当前标注注释").fill("需要复习的定义");
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.reload();
+  await expect(page.locator(".pg-annotation-item")).toHaveCount(1);
+  await page.locator(".pg-annotation-item").click();
+  await expect(page.getByLabel("当前标注注释")).toHaveValue("需要复习的定义");
+});

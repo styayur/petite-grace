@@ -2,6 +2,17 @@
 
 All notable changes are recorded here. The project follows semantic versioning for release tags.
 
+## [0.3.0] - 2026-11-10
+
+### Added
+
+- PDF text highlighting with page-relative anchors
+- Editable short notes and a concentrated annotation panel
+- Annotation import/export and click-to-locate navigation
+- Quote-based annotation relocation and explicit missing-quote state
+- Focus-reading mode
+- IndexedDB integration tests for reading state and annotations
+
 ## [0.2.0] - 2026-11-10
 
 ### Added

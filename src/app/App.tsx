@@ -13,18 +13,25 @@ import { saveBlob, DownloadQueue, type DownloadTask } from "../downloads/queue";
 import {
   annotationRepository,
   coursesRepository,
+  reviewRepository,
   settingsRepository,
 } from "../storage/repositories";
 import {
   CloseIcon,
   DownloadIcon,
   ExpandIcon,
+  SettingsIcon,
   MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
   SunIcon,
 } from "../ui/icons";
 import { formatBytes } from "../ui/format";
+import { AiSettingsModal } from "../ai/AiSettingsModal";
+import type { ProviderConfig } from "../ai/types";
+import { loadProviderConfigs, saveProviderConfigs } from "../ai/config-store";
+import type { ExerciseQuestion } from "../exercises/types";
+import { createReviewItem } from "../review/factory";
 import baseStyles from "../ui/base.css?inline";
 
 interface AppProps {
@@ -58,6 +65,8 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
   const [focusAnnotationId, setFocusAnnotationId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [focusModePanels, setFocusModePanels] = useState({ left: true, right: true });
+  const [providerConfigs, setProviderConfigs] = useState<ProviderConfig[]>([]);
+  const [showAiSettings, setShowAiSettings] = useState(false);
 
   const selectedResource = useMemo(
     () => course?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
@@ -88,6 +97,11 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     });
   }, []);
 
+  useEffect(() => {
+    void loadProviderConfigs()
+      .then(setProviderConfigs)
+      .catch(() => setNotice({ message: "AI Provider 配置读取失败", tone: "error" }));
+  }, []);
   useEffect(() => {
     if (initialCourse) return;
     const courseId = adapter.getCourseId();
@@ -234,6 +248,30 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
       });
   };
 
+  const saveAiConfigs = async (configs: ProviderConfig[]) => {
+    await saveProviderConfigs(configs);
+    setProviderConfigs(configs);
+    setShowAiSettings(false);
+    setNotice({ message: "AI Provider 设置已保存到本机", tone: "info" });
+  };
+
+  const createReviewFromExercise = (question: ExerciseQuestion, aiText: string | null) => {
+    if (!selectedResource) return;
+    const options = question.options.map((option) => `${option.label}. ${option.text}`).join("\n");
+    const item = createReviewItem({
+      front: `${question.stem}${options ? `\n${options}` : ""}`,
+      back: question.verifiedAnswer ?? aiText ?? question.explanation ?? "请根据课程资料补充答案。",
+      source: {
+        type: "exercise",
+        courseId: selectedResource.courseId,
+        resourceId: selectedResource.id,
+      },
+    });
+    void reviewRepository
+      .put(item)
+      .then(() => setNotice({ message: "已保存为复习项目", tone: "info" }))
+      .catch(() => setNotice({ message: "复习项目保存失败", tone: "error" }));
+  };
   const selectChapter = (chapterId: string) => {
     setActiveChapterId(chapterId);
     const nextResource = course?.resources
@@ -338,6 +376,15 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
           <button
             class="pg-icon-button"
             type="button"
+            title="AI Provider 设置"
+            aria-label="AI Provider 设置"
+            onClick={() => setShowAiSettings(true)}
+          >
+            <SettingsIcon />
+          </button>
+          <button
+            class="pg-icon-button"
+            type="button"
             title={theme === "light" ? "切换到深色主题" : "切换到浅色主题"}
             aria-label={theme === "light" ? "切换到深色主题" : "切换到浅色主题"}
             onClick={toggleTheme}
@@ -402,6 +449,9 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
               onCreateAnnotation={saveAnnotation}
               onSelectAnnotation={selectAnnotation}
               onRelocateAnnotations={relocateAnnotations}
+              providerConfigs={providerConfigs}
+              onOpenAiSettings={() => setShowAiSettings(true)}
+              onCreateReview={createReviewFromExercise}
             />
           </div>
         </main>
@@ -505,6 +555,15 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
           </aside>
         ) : null}
       </div>
+
+      {showAiSettings ? (
+        <AiSettingsModal
+          configs={providerConfigs}
+          onClose={() => setShowAiSettings(false)}
+          onSave={saveAiConfigs}
+          onNotify={(message, tone = "info") => setNotice({ message, tone })}
+        />
+      ) : null}
 
       {notice ? (
         <div

@@ -1,8 +1,16 @@
+import { webcrypto } from "node:crypto";
 import { afterEach, vi } from "vitest";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    configurable: true,
+  });
+}
 
 if (!globalThis.crypto?.randomUUID) {
   Object.defineProperty(globalThis.crypto, "randomUUID", {

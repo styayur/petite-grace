@@ -2,6 +2,18 @@
 
 All notable changes are recorded here. The project follows semantic versioning for release tags.
 
+## [0.4.0] - 2026-11-10
+
+### Added
+
+- Exercise parser, question navigation and local completion/review status
+- Platform-answer versus AI-inference separation
+- Groq, OpenRouter, Gemini and OpenAI-compatible Provider Registry
+- Local API Key/model settings, discovery, caching, rate limiting and fallback
+- Per-question AI consent, hint, explanation and answer-check modes
+- Review-item creation from exercises
+- AI provider and paid-model guardrail tests
+
 ## [0.3.0] - 2026-11-10
 
 ### Added

@@ -8,6 +8,7 @@ import type {
 import { courseFixture } from "../fixtures/course";
 import { createMinimalPdf } from "../fixtures/pdf";
 import { createMinimalPptx } from "../fixtures/pptx";
+import { exerciseHtml } from "../fixtures/exercises";
 
 class FixtureAdapter implements CourseAdapter {
   getCourseId(): string {
@@ -22,6 +23,8 @@ class FixtureAdapter implements CourseAdapter {
   async fetchResourceBytes(resource: ResourceRecord): Promise<ArrayBuffer> {
     if (resource.kind === "pdf") return createMinimalPdf(30);
     if (resource.kind === "presentation") return createMinimalPptx();
+    if (resource.kind === "exercise")
+      return new TextEncoder().encode(exerciseHtml).buffer as ArrayBuffer;
     if (resource.kind === "image") {
       const png = Uint8Array.from(
         atob(

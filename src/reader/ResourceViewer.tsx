@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CourseAdapter, ResourceRecord } from "../platform/xiaoya/types";
 import type { Annotation } from "../annotations/types";
+import type { ProviderConfig } from "../ai/types";
+import type { ExerciseQuestion } from "../exercises/types";
+import { ExerciseReader } from "../exercises/ExerciseReader";
 import { DownloadIcon, FileIcon } from "../ui/icons";
 import { resourceKindLabel } from "../ui/format";
 import { PdfReader } from "./pdf/PdfReader";
@@ -19,6 +22,9 @@ interface ResourceViewerProps {
   onRelocateAnnotations: (
     updates: Array<{ id: string; page: number; needsRelocation: boolean }>,
   ) => void | Promise<void>;
+  providerConfigs: ProviderConfig[];
+  onOpenAiSettings: () => void;
+  onCreateReview: (question: ExerciseQuestion, aiText: string | null) => void;
 }
 
 function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
@@ -77,6 +83,9 @@ export function ResourceViewer({
   onCreateAnnotation,
   onSelectAnnotation,
   onRelocateAnnotations,
+  providerConfigs,
+  onOpenAiSettings,
+  onCreateReview,
 }: ResourceViewerProps) {
   const image = useImageUrl(resource, adapter);
 
@@ -117,6 +126,21 @@ export function ResourceViewer({
         adapter={adapter}
         onDownload={onDownload}
         onNotify={onNotify}
+      />
+    );
+  }
+
+  if (resource.kind === "exercise") {
+    return (
+      <ExerciseReader
+        key={resource.id}
+        resource={resource}
+        adapter={adapter}
+        providerConfigs={providerConfigs}
+        onOpenAiSettings={onOpenAiSettings}
+        onDownload={onDownload}
+        onNotify={onNotify}
+        onCreateReview={onCreateReview}
       />
     );
   }

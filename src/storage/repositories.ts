@@ -1,8 +1,9 @@
 import type { Annotation } from "../annotations/types";
+import type { ExerciseState } from "../exercises/types";
 import type { CourseSnapshot } from "../platform/xiaoya/types";
 import type { ReadingState } from "../reader/types";
 import type { ReviewItem } from "../review/types";
-import { dbPromise, type AppSetting } from "./db";
+import { dbPromise, type AppSetting, type AiCacheRecord, type ProviderSecret } from "./db";
 
 export const coursesRepository = {
   async get(courseId: string): Promise<CourseSnapshot | undefined> {
@@ -55,6 +56,37 @@ export const reviewRepository = {
   },
 };
 
+export const exerciseRepository = {
+  async listByResource(resourceId: string): Promise<ExerciseState[]> {
+    return (await dbPromise).getAllFromIndex("exerciseStates", "by-resource", resourceId);
+  },
+  async put(state: ExerciseState): Promise<void> {
+    await (await dbPromise).put("exerciseStates", state);
+  },
+};
+
+export const providerSecretRepository = {
+  async get(providerId: string): Promise<string | null> {
+    const record = await (await dbPromise).get("providerSecrets", providerId);
+    return record?.apiKey ?? null;
+  },
+  async put(secret: ProviderSecret): Promise<void> {
+    await (await dbPromise).put("providerSecrets", secret);
+  },
+  async delete(providerId: string): Promise<void> {
+    await (await dbPromise).delete("providerSecrets", providerId);
+  },
+};
+
+export const aiCacheRepository = {
+  async get(key: string): Promise<AiCacheRecord | undefined> {
+    return (await dbPromise).get("aiCache", key);
+  },
+  async put(record: AiCacheRecord): Promise<void> {
+    await (await dbPromise).put("aiCache", record);
+  },
+};
+
 export const settingsRepository = {
   async get<T>(key: string, fallback: T): Promise<T> {
     const record = await (await dbPromise).get("settings", key);
@@ -79,5 +111,6 @@ export async function clearAllLocalData(): Promise<void> {
     db.clear("settings"),
     db.clear("providerSecrets"),
     db.clear("aiCache"),
+    db.clear("exerciseStates"),
   ]);
 }

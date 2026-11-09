@@ -1,0 +1,22 @@
+{
+  "version": "0.4.0",
+  "build": "passed",
+  "unit": "passed",
+  "integration": "passed",
+  "e2e": "passed",
+  "security": "passed",
+  "realPlatform": "not_verified",
+  "releaseGate": "blocked",
+  "blockers": ["real-platform-acceptance"],
+  "evidence": {
+    "unitAndIntegrationTests": 26,
+    "e2eTests": 4,
+    "exerciseParser": "fixture-tested",
+    "exerciseStatePersistence": "verified by Playwright reload",
+    "noProviderFallback": "verified; workspace remains usable",
+    "aiConsentGuard": "unit-tested",
+    "paidModelGuard": "unit-tested for OpenRouter",
+    "providerFallback": "unit-tested",
+    "realPlatformReason": "Live Xiaoya course access remains blocked by the unavailable browser-control path."
+  }
+}

@@ -59,3 +59,29 @@ test("creates, edits and restores a PDF highlight annotation", async ({ page }) 
   await page.locator(".pg-annotation-item").click();
   await expect(page.getByLabel("当前标注注释")).toHaveValue("需要复习的定义");
 });
+
+test("reads exercises, keeps local status and exposes opt-in AI settings", async ({ page }) => {
+  await page.goto("/tests/harness/");
+  await page.getByLabel("资源范围").selectOption("all");
+  await page.getByText("章节练习").click();
+  await expect(page.getByText("哪一个选项体现了主动阅读？", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "标记完成" }).click();
+  await expect(page.getByRole("button", { name: "第 1 题" })).toHaveAttribute(
+    "data-status",
+    "completed",
+  );
+  await page.getByRole("button", { name: "第 2 题" }).click();
+  await expect(page.getByText("平台没有提供可验证参考答案", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "关键提示" }).click();
+  await expect(page.getByText("请先勾选本次发送同意")).toBeVisible();
+  await page.getByRole("button", { name: "AI Provider 设置" }).click();
+  await expect(page.getByRole("dialog", { name: "AI Provider 设置" })).toBeVisible();
+  await page.getByRole("button", { name: "关闭设置" }).click();
+  await page.reload();
+  await page.getByLabel("资源范围").selectOption("all");
+  await page.getByText("章节练习").click();
+  await expect(page.getByRole("button", { name: "第 1 题" })).toHaveAttribute(
+    "data-status",
+    "completed",
+  );
+});

@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run test && npm run build",
-    "release:assets": "node scripts/prepare-release.mjs"
+    "release:assets": "node scripts/prepare-release.mjs",
+    "licenses": "node scripts/check-licenses.mjs"
   },
   "dependencies": {
     "fflate": "0.8.3",
@@ -35,6 +36,6 @@
     "prettier": "3.9.10",
     "typescript": "5.9.3",
     "vite": "7.3.8",
-    "vitest": "3.2.7"
+    "vitest": "^5.1.0"
   }
 }

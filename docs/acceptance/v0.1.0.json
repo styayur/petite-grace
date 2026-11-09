@@ -1,0 +1,17 @@
+{
+  "version": "0.1.0",
+  "build": "passed",
+  "unit": "passed",
+  "integration": "passed",
+  "e2e": "passed",
+  "security": "passed",
+  "realPlatform": "not_verified",
+  "releaseGate": "blocked",
+  "blockers": ["real-platform-acceptance"],
+  "evidence": {
+    "unitTests": 10,
+    "e2eTests": 1,
+    "buildArtifact": "dist/petite-grace.user.js",
+    "realPlatformReason": "Chrome computer-use could not determine the active browser URL reliably; fixture coverage was used without claiming live acceptance."
+  }
+}

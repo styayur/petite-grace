@@ -6,7 +6,15 @@ Petite Grace brings chapter navigation, course-resource downloads, PDF/PPT readi
 
 ## Status
 
-Development is staged from `v0.1.0` through `v0.5.0`. Real-platform acceptance is tracked in `docs/acceptance/`; fixture-based tests are never presented as real-platform verification.
+`v0.5.0-rc.1` is a Release Candidate. Automated verification passes, but live Xiaoya acceptance remains `NOT_VERIFIED`, so this repository does not claim a Stable release. Machine-readable evidence is under `docs/acceptance/`.
+
+## Screenshots
+
+![Course workspace](docs/assets/screenshots/workspace.png)
+
+![Review workspace](docs/assets/screenshots/review.png)
+
+![AI provider settings](docs/assets/screenshots/ai-settings.png)
 
 ## Development
 

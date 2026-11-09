@@ -18,4 +18,5 @@ export interface ReviewItem {
   easeFactor: number;
   repetitions: number;
   lapses: number;
+  lastReviewedAt?: string;
 }

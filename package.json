@@ -1,6 +1,6 @@
 {
   "name": "petite-grace",
-  "version": "0.4.0",
+  "version": "0.5.0-rc.1",
   "private": true,
   "type": "module",
   "description": "A lightweight, privacy-first course companion for Xiaoya learning platform.",
@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run test && npm run build",
     "release:assets": "node scripts/prepare-release.mjs",
-    "licenses": "node scripts/check-licenses.mjs"
+    "licenses": "node scripts/check-licenses.mjs",
+    "acceptance": "node scripts/run-acceptance.mjs"
   },
   "dependencies": {
     "fflate": "0.8.3",

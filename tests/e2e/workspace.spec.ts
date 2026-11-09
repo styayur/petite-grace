@@ -53,11 +53,15 @@ test("creates, edits and restores a PDF highlight annotation", async ({ page }) 
   await expect(page.locator(".pg-highlight")).toBeVisible();
 
   await page.getByLabel("当前标注注释").fill("需要复习的定义");
-  await page.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.reload();
   await expect(page.locator(".pg-annotation-item")).toHaveCount(1);
   await page.locator(".pg-annotation-item").click();
   await expect(page.getByLabel("当前标注注释")).toHaveValue("需要复习的定义");
+  await page.getByRole("button", { name: "保存为复习" }).click();
+  await expect(page.getByText("已将划线保存为复习项目")).toBeVisible();
+  await page.getByRole("button", { name: "复习", exact: true }).click();
+  await expect(page.locator(".pg-review-front")).toHaveText("需要复习的定义");
 });
 
 test("reads exercises, keeps local status and exposes opt-in AI settings", async ({ page }) => {
@@ -83,5 +87,43 @@ test("reads exercises, keeps local status and exposes opt-in AI settings", async
   await expect(page.getByRole("button", { name: "第 1 题" })).toHaveAttribute(
     "data-status",
     "completed",
+  );
+});
+
+test("creates and completes a review card", async ({ page }) => {
+  await page.goto("/tests/harness/");
+  await page.getByLabel("资源范围").selectOption("all");
+  await page.getByText("章节练习").click();
+  await page.getByRole("button", { name: "保存为复习" }).first().click();
+  await expect(page.getByText("已保存为复习项目")).toBeVisible();
+  await page.getByRole("button", { name: "复习", exact: true }).click();
+  await expect(page.getByRole("region", { name: "复习工作区" })).toBeVisible();
+  await expect(page.locator(".pg-review-front")).toContainText("主动阅读");
+  await page.getByRole("button", { name: /查看答案/ }).click();
+  await expect(page.locator(".pg-review-back")).toContainText("B");
+  await page.getByRole("button", { name: /良好/ }).click();
+  await expect(page.getByText("今天的复习完成了")).toBeVisible();
+});
+
+test("supports keyboard focus mode and a narrow responsive viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 820 });
+  await page.goto("/tests/harness/");
+  await expect(page.locator(".pg-shell")).toBeVisible();
+  await page.keyboard.press("f");
+  await expect(page.locator(".pg-workspace")).toHaveClass(/no-left/);
+  await expect(page.locator(".pg-workspace")).toHaveClass(/no-right/);
+  await page.keyboard.press("f");
+  await expect(page.locator(".pg-workspace")).not.toHaveClass(/no-left/);
+  await page.getByRole("button", { name: "阅读显示设置" }).click();
+  await expect(page.getByRole("dialog", { name: "阅读显示设置" })).toBeVisible();
+  await page.getByLabel("文字大小 · 100%").evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = "1.2";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.getByRole("button", { name: "完成" }).click();
+  await expect(page.locator(".pg-shell")).toHaveAttribute(
+    "style",
+    /--pg-reader-font-scale:\s*1\.2/,
   );
 });

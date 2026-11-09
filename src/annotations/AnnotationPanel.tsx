@@ -7,6 +7,7 @@ interface AnnotationPanelProps {
   onSelect: (annotation: Annotation) => void;
   onUpdateNote: (annotation: Annotation, note: string) => void;
   onDelete: (annotation: Annotation) => void;
+  onCreateReview: (annotation: Annotation) => void;
   onExport: () => void;
   onImportFile: (file: File) => void;
 }
@@ -17,6 +18,7 @@ export function AnnotationPanel({
   onSelect,
   onUpdateNote,
   onDelete,
+  onCreateReview,
   onExport,
   onImportFile,
 }: AnnotationPanelProps) {
@@ -109,6 +111,9 @@ export function AnnotationPanel({
             </button>
             <button class="pg-button" type="button" onClick={() => onSelect(selected)}>
               定位
+            </button>
+            <button class="pg-button" type="button" onClick={() => onCreateReview(selected)}>
+              保存为复习
             </button>
             <button
               class="pg-button pg-button-danger"

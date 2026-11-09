@@ -43,20 +43,23 @@ const sourceZip = zipSync(zipEntries, { level: 9 });
 const sourceAsset = path.join(artifactDir, `petite-grace-v${version}-source.zip`);
 fs.writeFileSync(sourceAsset, sourceZip);
 
-const realPlatform = process.env.PG_REAL_PLATFORM ?? "not_verified";
-const acceptance = {
-  version,
-  build: "passed",
-  unit: "passed",
-  integration: "passed",
-  e2e: "passed",
-  security: "passed",
-  realPlatform,
-  releaseGate: realPlatform === "verified" ? "ready" : "blocked",
-  blockers: realPlatform === "verified" ? [] : ["real-platform-acceptance"],
-  generatedAt: new Date().toISOString(),
-};
-const acceptanceAsset = path.join(artifactDir, `acceptance-${version}.json`);
+const acceptancePath = path.resolve(`artifacts/acceptance-${version}.json`);
+const documentedAcceptancePath = path.resolve(`docs/acceptance/v${version}.json`);
+const acceptanceSource = fs.existsSync(acceptancePath)
+  ? acceptancePath
+  : fs.existsSync(documentedAcceptancePath)
+    ? documentedAcceptancePath
+    : null;
+if (!acceptanceSource) {
+  throw new Error(`Acceptance record missing for ${version}; run npm run acceptance first`);
+}
+const acceptance = JSON.parse(fs.readFileSync(acceptanceSource, "utf8"));
+if (acceptance.version !== version) {
+  throw new Error(
+    `Acceptance version mismatch: expected ${version}, received ${acceptance.version}`,
+  );
+}
+const acceptanceAsset = path.resolve(`artifacts/acceptance-${version}.json`);
 fs.writeFileSync(acceptanceAsset, `${JSON.stringify(acceptance, null, 2)}\n`);
 
 const hashTargets = [userAsset, metaAsset, sourceAsset, acceptanceAsset];

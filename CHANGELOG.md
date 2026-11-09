@@ -2,6 +2,18 @@
 
 All notable changes are recorded here. The project follows semantic versioning for release tags.
 
+## [0.5.0-rc.1] - 2026-11-10
+
+### Added
+
+- Anki-style review card workspace with due/today counts
+- SM-2-style review scheduler and local review progress
+- Review creation from exercises, highlights and notes
+- Review JSON import/export and source navigation
+- Reflowable reader text size/line-height settings
+- Keyboard shortcuts and narrow-viewport responsive coverage
+- Test-derived acceptance script and release-channel gate
+
 ## [0.4.0] - 2026-11-10
 
 ### Added

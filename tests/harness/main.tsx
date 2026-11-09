@@ -6,6 +6,8 @@ import type {
   ResourceRecord,
 } from "../../src/platform/xiaoya/types";
 import { courseFixture } from "../fixtures/course";
+import { createMinimalPdf } from "../fixtures/pdf";
+import { createMinimalPptx } from "../fixtures/pptx";
 
 class FixtureAdapter implements CourseAdapter {
   getCourseId(): string {
@@ -15,11 +17,21 @@ class FixtureAdapter implements CourseAdapter {
     return courseFixture;
   }
   async resolveResourceUrl(resource: ResourceRecord): Promise<string> {
-    return `data:application/octet-stream;base64,${btoa(`fixture:${resource.id}`)}`;
+    return `https://course.ai-augmented.com/fixture/${resource.id}`;
   }
   async fetchResourceBytes(resource: ResourceRecord): Promise<ArrayBuffer> {
-    const bytes = new TextEncoder().encode(`Fixture resource ${resource.id}`);
-    return bytes.buffer;
+    if (resource.kind === "pdf") return createMinimalPdf(30);
+    if (resource.kind === "presentation") return createMinimalPptx();
+    if (resource.kind === "image") {
+      const png = Uint8Array.from(
+        atob(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nH0AAAAASUVORK5CYII=",
+        ),
+        (character) => character.charCodeAt(0),
+      );
+      return png.buffer as ArrayBuffer;
+    }
+    return new TextEncoder().encode(`Fixture resource ${resource.id}`).buffer as ArrayBuffer;
   }
 }
 

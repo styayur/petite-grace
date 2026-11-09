@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import pkg from "./package.json";
 
@@ -20,7 +20,18 @@ const userscriptHeader = `// ==UserScript==
 // @run-at       document-idle
 // ==/UserScript==`;
 
+const userscriptHeaderPlugin = {
+  name: "petite-grace-userscript-header",
+  generateBundle(_options: unknown, bundle: Record<string, { type: string; code?: string }>) {
+    const chunk = bundle["petite-grace.user.js"];
+    if (chunk?.type === "chunk" && typeof chunk.code === "string") {
+      chunk.code = `${userscriptHeader}\n${chunk.code}`;
+    }
+  },
+};
+
 export default defineConfig({
+  plugins: [userscriptHeaderPlugin],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -30,22 +41,12 @@ export default defineConfig({
     target: "chrome120",
     sourcemap: true,
     rollupOptions: {
-      input: resolve(__dirname, "src/entrypoints/xiaoya.user.ts"),
+      input: fileURLToPath(new URL("./src/entrypoints/xiaoya.user.tsx", import.meta.url)),
       output: {
         entryFileNames: "petite-grace.user.js",
         format: "iife",
         inlineDynamicImports: true,
-        banner: userscriptHeader,
       },
-    },
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./tests/setup.ts"],
-    include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
-    coverage: {
-      reporter: ["text", "json-summary"],
-      include: ["src/**/*.{ts,tsx}"],
     },
   },
 });

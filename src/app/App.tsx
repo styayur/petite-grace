@@ -1,0 +1,371 @@
+import { useEffect, useMemo, useState } from "preact/hooks";
+import { CourseSidebar } from "../library/CourseSidebar";
+import type { CourseAdapter, CourseSnapshot, ResourceRecord } from "../platform/xiaoya/types";
+import { ResourceViewer } from "../reader/ResourceViewer";
+import { saveBlob, DownloadQueue, type DownloadTask } from "../downloads/queue";
+import { coursesRepository, settingsRepository } from "../storage/repositories";
+import {
+  CloseIcon,
+  DownloadIcon,
+  MoonIcon,
+  PanelLeftIcon,
+  PanelRightIcon,
+  SunIcon,
+} from "../ui/icons";
+import { formatBytes } from "../ui/format";
+import baseStyles from "../ui/base.css?inline";
+
+interface AppProps {
+  adapter: CourseAdapter;
+  initialCourse?: CourseSnapshot;
+  onClose?: () => void;
+}
+
+interface Notice {
+  message: string;
+  tone: "info" | "error";
+}
+
+function getShadowHost(node: Node): HTMLElement | null {
+  const root = node.getRootNode();
+  return root instanceof ShadowRoot ? (root.host as HTMLElement) : null;
+}
+
+export function App({ adapter, initialCourse, onClose }: AppProps) {
+  const [course, setCourse] = useState<CourseSnapshot | null>(initialCourse ?? null);
+  const [loading, setLoading] = useState(!initialCourse);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
+  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [tasks, setTasks] = useState<DownloadTask[]>([]);
+
+  const selectedResource = useMemo(
+    () => course?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
+    [course, selectedResourceId],
+  );
+
+  const downloadQueue = useMemo(
+    () =>
+      new DownloadQueue({
+        concurrency: 2,
+        onCompleted: (task, blob) => saveBlob(blob, task.name),
+      }),
+    [],
+  );
+
+  useEffect(() => downloadQueue.subscribe(setTasks), [downloadQueue]);
+
+  useEffect(() => {
+    const host = getShadowHost(document.createElement("div"));
+    const root = document.querySelector("petite-grace-root");
+    if (root) root.setAttribute("data-theme", theme);
+    void host;
+  }, [theme]);
+
+  useEffect(() => {
+    void settingsRepository.get("theme", "light").then((value) => {
+      if (value === "dark" || value === "light") setTheme(value);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (initialCourse) return;
+    const courseId = adapter.getCourseId();
+    if (!courseId) {
+      setLoading(false);
+      setNotice({ message: "当前页面不是识别到的小雅课程页", tone: "error" });
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void coursesRepository
+      .get(courseId)
+      .then((cached) => {
+        if (!cancelled && cached) setCourse(cached);
+      })
+      .catch(() => undefined);
+    void adapter
+      .loadCourse(courseId)
+      .then((snapshot) => {
+        if (cancelled) return;
+        setCourse(snapshot);
+        void coursesRepository.put(snapshot).catch(() => undefined);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setNotice({
+          message: reason instanceof Error ? reason.message : "课程加载失败",
+          tone: "error",
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, initialCourse]);
+
+  useEffect(() => {
+    if (!course || selectedResourceId) return;
+    const firstChapter = course.rootChapterIds[0] ?? null;
+    setActiveChapterId(firstChapter);
+    const firstResource =
+      course.resources.find((resource) => resource.chapterId === firstChapter) ??
+      course.resources[0];
+    if (firstResource) {
+      setSelectedResourceId(firstResource.id);
+      setActiveChapterId(firstResource.chapterId ?? firstChapter);
+    }
+  }, [course, selectedResourceId]);
+
+  const selectChapter = (chapterId: string) => {
+    setActiveChapterId(chapterId);
+    const nextResource = course?.resources
+      .filter((resource) => resource.chapterId === chapterId)
+      .sort((a, b) => a.displayOrder - b.displayOrder)[0];
+    if (nextResource) setSelectedResourceId(nextResource.id);
+  };
+
+  const selectResource = (resource: ResourceRecord) => {
+    setSelectedResourceId(resource.id);
+    setActiveChapterId(resource.chapterId);
+  };
+
+  const downloadResource = async (resource: ResourceRecord) => {
+    try {
+      setNotice({ message: `正在准备 ${resource.title}`, tone: "info" });
+      const url = await adapter.resolveResourceUrl(resource);
+      downloadQueue.add({ name: resource.title, url });
+      setNotice(null);
+    } catch (reason) {
+      setNotice({
+        message: reason instanceof Error ? reason.message : "下载地址获取失败",
+        tone: "error",
+      });
+    }
+  };
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    void settingsRepository.put("theme", next);
+  };
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 7000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  const activeDownloads = tasks.filter(
+    (task) => task.status === "running" || task.status === "queued",
+  );
+  const failedDownloads = tasks.filter((task) => task.status === "failed");
+
+  return (
+    <div class="pg-shell" data-left={leftOpen ? "open" : "closed"} data-theme={theme}>
+      <style>{baseStyles}</style>
+      <header class="pg-topbar">
+        <div class="pg-brand">
+          <span class="pg-brand-mark" aria-hidden="true">
+            PG
+          </span>
+          <span>Petite Grace</span>
+        </div>
+        <span class="pg-course-title" title={course?.title}>
+          {course?.title ?? (loading ? "正在识别课程…" : "课程未加载")}
+        </span>
+        <span class="pg-spacer" />
+        <div class="pg-toolbar">
+          <button
+            class={`pg-icon-button${leftOpen ? " selected" : ""}`}
+            type="button"
+            title="显示或隐藏章节栏"
+            aria-label="显示或隐藏章节栏"
+            aria-pressed={leftOpen}
+            onClick={() => setLeftOpen((value) => !value)}
+          >
+            <PanelLeftIcon />
+          </button>
+          <button
+            class={`pg-icon-button${rightOpen ? " selected" : ""}`}
+            type="button"
+            title="显示或隐藏信息栏"
+            aria-label="显示或隐藏信息栏"
+            aria-pressed={rightOpen}
+            onClick={() => setRightOpen((value) => !value)}
+          >
+            <PanelRightIcon />
+          </button>
+          <button
+            class="pg-icon-button"
+            type="button"
+            title={theme === "light" ? "切换到深色主题" : "切换到浅色主题"}
+            aria-label={theme === "light" ? "切换到深色主题" : "切换到浅色主题"}
+            onClick={toggleTheme}
+          >
+            {theme === "light" ? <MoonIcon /> : <SunIcon />}
+          </button>
+          {onClose ? (
+            <button
+              class="pg-icon-button"
+              type="button"
+              title="关闭工作区"
+              aria-label="关闭工作区"
+              onClick={onClose}
+            >
+              <CloseIcon />
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <div class={`pg-workspace${leftOpen ? "" : " no-left"}${rightOpen ? "" : " no-right"}`}>
+        {leftOpen && course ? (
+          <CourseSidebar
+            course={course}
+            activeChapterId={activeChapterId}
+            selectedResourceId={selectedResourceId}
+            defaultExpanded
+            onChapterSelect={selectChapter}
+            onResourceSelect={selectResource}
+            onDownload={downloadResource}
+          />
+        ) : leftOpen ? (
+          <aside class="pg-sidebar">
+            <div class="pg-empty">正在加载章节…</div>
+          </aside>
+        ) : null}
+
+        <main class="pg-main">
+          <div class="pg-main-toolbar">
+            <div class="pg-main-title" title={selectedResource?.title}>
+              {selectedResource?.title ?? "学习工作区"}
+            </div>
+            {selectedResource ? (
+              <button
+                class="pg-button pg-button-subtle"
+                type="button"
+                onClick={() => void downloadResource(selectedResource)}
+              >
+                <DownloadIcon /> 下载
+              </button>
+            ) : null}
+          </div>
+          <div class="pg-reader-surface" id="petite-grace-reader-surface">
+            <ResourceViewer
+              resource={selectedResource}
+              adapter={adapter}
+              onDownload={downloadResource}
+              onNotify={(message, tone = "info") => setNotice({ message, tone })}
+            />
+          </div>
+        </main>
+
+        {rightOpen ? (
+          <aside class="pg-inspector" aria-label="资源信息">
+            <div>
+              <h3>资源信息</h3>
+              <dl class="pg-info-list">
+                <div class="pg-info-row">
+                  <dt>课程</dt>
+                  <dd>{course?.title ?? "—"}</dd>
+                </div>
+                <div class="pg-info-row">
+                  <dt>资源</dt>
+                  <dd>{selectedResource?.title ?? "未选择"}</dd>
+                </div>
+                <div class="pg-info-row">
+                  <dt>类型</dt>
+                  <dd>{selectedResource?.mimeType ?? selectedResource?.kind ?? "—"}</dd>
+                </div>
+                <div class="pg-info-row">
+                  <dt>章节</dt>
+                  <dd>
+                    {course?.chapters.find((chapter) => chapter.id === selectedResource?.chapterId)
+                      ?.title ?? "未归档"}
+                  </dd>
+                </div>
+                <div class="pg-info-row">
+                  <dt>排序依据</dt>
+                  <dd>
+                    {course?.sortEvidence === "explicit-order-field"
+                      ? "平台显式顺序字段"
+                      : "平台原始顺序（回退）"}
+                  </dd>
+                </div>
+                <div class="pg-info-row">
+                  <dt>加载来源</dt>
+                  <dd>{course?.source === "live" ? "当前登录会话" : "本地缓存 / fixture"}</dd>
+                </div>
+              </dl>
+            </div>
+            <div>
+              <h3>下载队列</h3>
+              {tasks.length === 0 ? (
+                <p style={{ color: "var(--pg-text-tertiary)", fontSize: "12px" }}>暂无下载任务</p>
+              ) : (
+                <div style={{ display: "grid", gap: "8px" }}>
+                  {tasks.slice(-5).map((task) => {
+                    const ratio = task.total ? Math.round((task.loaded / task.total) * 100) : null;
+                    return (
+                      <div key={task.id}>
+                        <div style={{ fontSize: "12px", display: "flex", gap: "8px" }}>
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {task.name}
+                          </span>
+                          <span style={{ color: "var(--pg-text-tertiary)" }}>
+                            {task.status === "completed"
+                              ? formatBytes(task.loaded)
+                              : ratio != null
+                                ? `${ratio}%`
+                                : task.status}
+                          </span>
+                        </div>
+                        <div class="pg-progress" style={{ marginTop: "4px" }}>
+                          <span
+                            style={{ width: `${ratio ?? (task.status === "running" ? 20 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {activeDownloads.length ? (
+                <p class="pg-badge">{activeDownloads.length} 个任务进行中</p>
+              ) : null}
+              {failedDownloads.length ? (
+                <p class="pg-badge">{failedDownloads.length} 个任务失败</p>
+              ) : null}
+            </div>
+            <div style={{ marginTop: "auto", color: "var(--pg-text-tertiary)", fontSize: "11px" }}>
+              本地优先 · 不上传课程内容 · 不保存登录 Token
+            </div>
+          </aside>
+        ) : null}
+      </div>
+
+      {notice ? (
+        <div
+          class="pg-statusbar"
+          data-tone={notice.tone === "error" ? "error" : "info"}
+          role="status"
+        >
+          {notice.message}
+        </div>
+      ) : null}
+    </div>
+  );
+}

@@ -1,0 +1,40 @@
+{
+  "name": "petite-grace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A lightweight, privacy-first course companion for Xiaoya learning platform.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/styayur/petite-grace.git"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run typecheck && npm run format:check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "npm run lint && npm run test && npm run build",
+    "release:assets": "node scripts/prepare-release.mjs"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "idb": "8.0.4",
+    "pdfjs-dist": "6.5.438",
+    "preact": "10.29.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "24.10.1",
+    "jsdom": "27.0.1",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "vite": "7.3.8",
+    "vitest": "3.2.7"
+  }
+}

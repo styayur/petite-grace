@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { CourseAdapter, ResourceRecord } from "../platform/xiaoya/types";
 import { DownloadIcon, FileIcon } from "../ui/icons";
 import { resourceKindLabel } from "../ui/format";
+import { PdfReader } from "./pdf/PdfReader";
+import { PptxReader } from "./presentation/PptxReader";
 
 interface ResourceViewerProps {
   resource: ResourceRecord | null;
@@ -10,7 +12,7 @@ interface ResourceViewerProps {
   onNotify: (message: string, tone?: "info" | "error") => void;
 }
 
-function useObjectUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
+function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,22 +26,14 @@ function useObjectUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
     }
     setUrl(null);
     setError(null);
-    if (!resource || !["pdf", "image", "presentation"].includes(resource.kind)) return;
+    if (!resource || resource.kind !== "image") return;
     setLoading(true);
     void adapter
       .fetchResourceBytes(resource)
       .then((bytes) => {
         if (cancelled) return;
         const objectUrl = URL.createObjectURL(
-          new Blob([bytes], {
-            type:
-              resource.mimeType ??
-              (resource.kind === "pdf"
-                ? "application/pdf"
-                : resource.kind === "presentation"
-                  ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                  : "application/octet-stream"),
-          }),
+          new Blob([bytes], { type: resource.mimeType ?? "application/octet-stream" }),
         );
         urlRef.current = objectUrl;
         setUrl(objectUrl);
@@ -64,7 +58,7 @@ function useObjectUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
 }
 
 export function ResourceViewer({ resource, adapter, onDownload, onNotify }: ResourceViewerProps) {
-  const { url, loading, error } = useObjectUrl(resource, adapter);
+  const image = useImageUrl(resource, adapter);
 
   if (!resource) {
     return (
@@ -77,87 +71,65 @@ export function ResourceViewer({ resource, adapter, onDownload, onNotify }: Reso
     );
   }
 
-  if (loading) {
+  if (resource.kind === "pdf") {
     return (
-      <div class="pg-empty">
-        <div class="pg-empty-card">
-          <div class="pg-progress" style={{ marginBottom: "12px" }}>
-            <span style={{ width: "40%" }} />
-          </div>
-          <p>正在读取 {resource.title}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div class="pg-empty">
-        <div class="pg-empty-card">
-          <h2>无法预览此资源</h2>
-          <p>{error}</p>
-          <p style={{ color: "var(--pg-text-tertiary)" }}>
-            为避免把平台登录凭证发送给外域，Petite Grace 不会把 Bearer Token 附加到第三方地址。
-          </p>
-          <button
-            class="pg-button pg-button-primary"
-            type="button"
-            onClick={() => void onDownload(resource)}
-          >
-            <DownloadIcon /> 下载原始文件
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (resource.kind === "pdf" && url) {
-    return (
-      <iframe
-        title={resource.title}
-        src={url}
-        style={{ border: 0, width: "100%", height: "100%", background: "var(--pg-bg-sunken)" }}
+      <PdfReader
+        key={resource.id}
+        resource={resource}
+        adapter={adapter}
+        onDownload={onDownload}
+        onNotify={onNotify}
       />
-    );
-  }
-
-  if (resource.kind === "image" && url) {
-    return (
-      <div style={{ minHeight: "100%", display: "grid", placeItems: "center", padding: "24px" }}>
-        <img
-          src={url}
-          alt={resource.title}
-          style={{
-            maxWidth: "100%",
-            maxHeight: "calc(100vh - 130px)",
-            borderRadius: "10px",
-            boxShadow: "var(--pg-shadow-md)",
-          }}
-        />
-      </div>
     );
   }
 
   if (resource.kind === "presentation") {
     return (
-      <div class="pg-empty">
-        <div class="pg-empty-card">
-          <h2>{resource.title}</h2>
-          <p>
-            当前版本已识别 PPT/PPTX，但完整幻灯片阅读器将在 v0.2.0
-            接入。现在可以下载原始文件，或在平台页面中打开。
-          </p>
-          {url ? (
-            <a class="pg-button pg-button-primary" href={url} target="_blank" rel="noreferrer">
-              打开本地预览
-            </a>
-          ) : null}
-          <button class="pg-button" type="button" onClick={() => void onDownload(resource)}>
-            <DownloadIcon /> 下载原始文件
-          </button>
-        </div>
-      </div>
+      <PptxReader
+        key={resource.id}
+        resource={resource}
+        adapter={adapter}
+        onDownload={onDownload}
+        onNotify={onNotify}
+      />
     );
+  }
+
+  if (resource.kind === "image") {
+    if (image.loading) {
+      return (
+        <div class="pg-reader-loading">
+          <div class="pg-progress">
+            <span style={{ width: "40%" }} />
+          </div>
+          <p>正在读取 {resource.title}</p>
+        </div>
+      );
+    }
+    if (image.error) {
+      return (
+        <div class="pg-empty">
+          <div class="pg-empty-card">
+            <h2>无法预览图片</h2>
+            <p>{image.error}</p>
+            <button
+              class="pg-button pg-button-primary"
+              type="button"
+              onClick={() => void onDownload(resource)}
+            >
+              <DownloadIcon /> 下载原始文件
+            </button>
+          </div>
+        </div>
+      );
+    }
+    if (image.url) {
+      return (
+        <div class="pg-image-viewer">
+          <img src={image.url} alt={resource.title} />
+        </div>
+      );
+    }
   }
 
   if (resource.kind === "video") {

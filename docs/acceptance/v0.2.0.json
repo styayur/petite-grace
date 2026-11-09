@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "build": "passed",
+  "unit": "passed",
+  "integration": "passed",
+  "e2e": "passed",
+  "security": "passed",
+  "realPlatform": "not_verified",
+  "releaseGate": "blocked",
+  "blockers": ["real-platform-acceptance"],
+  "evidence": {
+    "unitTests": 12,
+    "e2eTests": 2,
+    "pdfPagesInFixture": 30,
+    "renderedCanvasesInE2eUpperBound": 11,
+    "buildArtifact": "dist/petite-grace.user.js",
+    "realPlatformReason": "The logged-in Xiaoya page could not be reached through the available browser-control path; fixture acceptance is recorded separately."
+  }
+}

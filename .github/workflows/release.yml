@@ -25,14 +25,30 @@ jobs:
       - run: npm run test:e2e
       - run: npm run licenses
       - run: npm run release:assets
+      - name: Choose release channel
+        id: channel
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          GATE=$(node -e "const a=require('./artifacts/acceptance-${VERSION}.json'); process.stdout.write(a.releaseGate)")
+          echo "gate=$GATE" >> "$GITHUB_OUTPUT"
+          if [ "$GATE" = "ready" ]; then
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           gh release create "${GITHUB_REF_NAME}" \
-            artifacts/petite-grace.user.js \
-            artifacts/petite-grace-source.zip \
+            "artifacts/petite-grace.user.js" \
+            "artifacts/petite-grace.meta.js" \
+            "artifacts/petite-grace-v${VERSION}-source.zip" \
             artifacts/SHA256SUMS.txt \
-            artifacts/acceptance-${GITHUB_REF_NAME#v}.json \
+            "artifacts/acceptance-${VERSION}.json" \
             --title "Petite Grace ${GITHUB_REF_NAME}" \
-            --notes-file "docs/releases/${GITHUB_REF_NAME}.md"
+            --notes-file "docs/releases/${GITHUB_REF_NAME}.md" \
+            ${{ steps.channel.outputs.flag }}

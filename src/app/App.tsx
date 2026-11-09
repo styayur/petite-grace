@@ -24,6 +24,7 @@ import {
   MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  ReviewIcon,
   SunIcon,
 } from "../ui/icons";
 import { formatBytes } from "../ui/format";
@@ -32,6 +33,14 @@ import type { ProviderConfig } from "../ai/types";
 import { loadProviderConfigs, saveProviderConfigs } from "../ai/config-store";
 import type { ExerciseQuestion } from "../exercises/types";
 import { createReviewItem } from "../review/factory";
+import type { ReviewItem } from "../review/types";
+import { dueReviews } from "../review/scheduler";
+import { ReviewWorkspace } from "../review/ReviewWorkspace";
+import {
+  DEFAULT_READER_PREFERENCES,
+  ReaderPreferences,
+  type ReaderPreferencesValue,
+} from "../reader/ReaderPreferences";
 import baseStyles from "../ui/base.css?inline";
 
 interface AppProps {
@@ -67,6 +76,12 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
   const [focusModePanels, setFocusModePanels] = useState({ left: true, right: true });
   const [providerConfigs, setProviderConfigs] = useState<ProviderConfig[]>([]);
   const [showAiSettings, setShowAiSettings] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [dueReviewCount, setDueReviewCount] = useState(0);
+  const [readerPreferences, setReaderPreferences] = useState<ReaderPreferencesValue>(
+    DEFAULT_READER_PREFERENCES,
+  );
+  const [showReaderPreferences, setShowReaderPreferences] = useState(false);
 
   const selectedResource = useMemo(
     () => course?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
@@ -95,6 +110,13 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     void settingsRepository.get("theme", "light").then((value) => {
       if (value === "dark" || value === "light") setTheme(value);
     });
+  }, []);
+
+  useEffect(() => {
+    void settingsRepository
+      .get("readerPreferences", DEFAULT_READER_PREFERENCES)
+      .then(setReaderPreferences)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -272,6 +294,88 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
       .then(() => setNotice({ message: "已保存为复习项目", tone: "info" }))
       .catch(() => setNotice({ message: "复习项目保存失败", tone: "error" }));
   };
+  const refreshDueReviewCount = async () => {
+    const all = await reviewRepository.list();
+    setDueReviewCount(dueReviews(all).length);
+  };
+
+  const openReview = () => {
+    setReviewOpen(true);
+    void refreshDueReviewCount();
+  };
+
+  const createReviewFromAnnotation = (annotation: Annotation) => {
+    const item = createReviewItem({
+      front: annotation.note.trim() || annotation.text,
+      back: [annotation.text, annotation.note, annotation.contextBefore, annotation.contextAfter]
+        .filter(Boolean)
+        .join("\n\n"),
+      source: {
+        type: "annotation",
+        courseId: annotation.courseId,
+        resourceId: annotation.resourceId,
+        annotationId: annotation.id,
+        page: annotation.page,
+      },
+    });
+    void reviewRepository
+      .put(item)
+      .then(() => {
+        void refreshDueReviewCount();
+        setNotice({ message: "已将划线保存为复习项目", tone: "info" });
+      })
+      .catch(() => setNotice({ message: "复习项目保存失败", tone: "error" }));
+  };
+
+  const openReviewSource = (source: ReviewItem["source"]) => {
+    if (!course || !source.resourceId) return;
+    const resource = course.resources.find((item) => item.id === source.resourceId);
+    if (!resource) return;
+    setSelectedResourceId(resource.id);
+    setActiveChapterId(resource.chapterId);
+    setReviewOpen(false);
+    setLeftOpen(true);
+    setRightOpen(true);
+    if (source.annotationId) {
+      setSelectedAnnotationId(source.annotationId);
+      setFocusAnnotationId(null);
+      window.setTimeout(() => setFocusAnnotationId(source.annotationId ?? null), 0);
+    }
+  };
+
+  useEffect(() => {
+    void refreshDueReviewCount();
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "Escape") {
+        if (showReaderPreferences) setShowReaderPreferences(false);
+        else if (showAiSettings) setShowAiSettings(false);
+        else if (reviewOpen) setReviewOpen(false);
+        return;
+      }
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        toggleFocusMode();
+      } else if (event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        openReview();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [
+    showReaderPreferences,
+    showAiSettings,
+    reviewOpen,
+    focusMode,
+    focusModePanels,
+    leftOpen,
+    rightOpen,
+  ]);
   const selectChapter = (chapterId: string) => {
     setActiveChapterId(chapterId);
     const nextResource = course?.resources
@@ -329,7 +433,12 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
   const failedDownloads = tasks.filter((task) => task.status === "failed");
 
   return (
-    <div class="pg-shell" data-left={leftOpen ? "open" : "closed"} data-theme={theme}>
+    <div
+      class="pg-shell"
+      data-left={leftOpen ? "open" : "closed"}
+      data-theme={theme}
+      style={`--pg-reader-font-scale:${readerPreferences.fontScale};--pg-reader-line-height:${readerPreferences.lineHeight}`}
+    >
       <style>{baseStyles}</style>
       <header class="pg-topbar">
         <div class="pg-brand">
@@ -372,6 +481,24 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
             onClick={toggleFocusMode}
           >
             <ExpandIcon />
+          </button>
+          <button
+            class="pg-button"
+            type="button"
+            title="开始复习"
+            aria-label="复习"
+            onClick={openReview}
+          >
+            <ReviewIcon /> 复习{dueReviewCount ? ` ${dueReviewCount}` : ""}
+          </button>
+          <button
+            class="pg-icon-button"
+            type="button"
+            title="阅读显示设置"
+            aria-label="阅读显示设置"
+            onClick={() => setShowReaderPreferences(true)}
+          >
+            <span style={{ fontWeight: 700, fontSize: "13px" }}>Aa</span>
           </button>
           <button
             class="pg-icon-button"
@@ -546,6 +673,7 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
               onSelect={selectAnnotation}
               onUpdateNote={updateAnnotationNote}
               onDelete={deleteAnnotation}
+              onCreateReview={createReviewFromAnnotation}
               onExport={exportAnnotations}
               onImportFile={importAnnotationsFile}
             />
@@ -555,6 +683,28 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
           </aside>
         ) : null}
       </div>
+
+      {reviewOpen ? (
+        <ReviewWorkspace
+          onClose={() => {
+            setReviewOpen(false);
+            void refreshDueReviewCount();
+          }}
+          onNotify={(message, tone = "info") => setNotice({ message, tone })}
+          onOpenSource={openReviewSource}
+        />
+      ) : null}
+
+      {showReaderPreferences ? (
+        <ReaderPreferences
+          value={readerPreferences}
+          onChange={(value) => {
+            setReaderPreferences(value);
+            void settingsRepository.put("readerPreferences", value);
+          }}
+          onClose={() => setShowReaderPreferences(false)}
+        />
+      ) : null}
 
       {showAiSettings ? (
         <AiSettingsModal

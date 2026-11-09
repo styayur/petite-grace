@@ -20,10 +20,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run verify
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - run: npm run licenses
+      - run: npm run acceptance
       - run: npm run release:assets
       - name: Choose release channel
         id: channel

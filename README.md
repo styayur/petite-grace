@@ -6,7 +6,15 @@ Petite Grace 将课程章节导航、课件下载、PDF/PPT 阅读、作业理�
 
 ## 当前状态
 
-项目正在按 `v0.1.0` → `v0.5.0` 的阶段路线开发。真实平台验收状态以 `docs/acceptance/` 中的机器可读记录为准；模拟 fixture 测试不会被表述为真实平台验收。
+`v0.5.0-rc.1` 是 Release Candidate。自动化验证已通过，但真实小雅平台验收仍为 `NOT_VERIFIED`，因此不会伪造 Stable 发布。验收状态以 `docs/acceptance/` 中的机器可读记录为准。
+
+## 界面
+
+![课程阅读工作区](docs/assets/screenshots/workspace.png)
+
+![Anki 风格复习](docs/assets/screenshots/review.png)
+
+![AI Provider 设置](docs/assets/screenshots/ai-settings.png)
 
 ## 核心能力
 
@@ -50,7 +58,7 @@ npm run build
 
 - 小雅 API 可能随平台升级变化；未验证的真实平台路径会明确标记为 `NOT_VERIFIED`。
 - PPTX 当前提供基础文本、形状与图片渲染；动画、SmartArt、复杂图表、公式与字体替换不保证还原。
-- 当前浏览器兼容矩阵覆盖现代 Chromium；其他浏览器需实际测试后才能声明支持。
+- Chromium 自动化测试已通过；完整兼容矩阵见 [docs/compatibility/browser-matrix.md](docs/compatibility/browser-matrix.md)。
 
 ## 许可证
 

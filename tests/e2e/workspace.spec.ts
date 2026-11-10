@@ -24,7 +24,15 @@ test("renders a continuous PDF, switches layout and restores progress", async ({
   await page.goto("/tests/harness/");
   await expect(page.locator(".pg-pdf-page")).toHaveCount(30);
   await expect
-    .poll(async () => page.locator(".pg-pdf-page canvas").count(), { timeout: 5000 })
+    .poll(
+      async () =>
+        page
+          .locator(".pg-pdf-page canvas")
+          .evaluateAll(
+            (nodes) => nodes.filter((node) => (node as HTMLCanvasElement).style.width).length,
+          ),
+      { timeout: 5000 },
+    )
     .toBeLessThan(12);
   await expect(page.getByLabel("第 1 页")).toBeVisible();
   await page.getByLabel("PDF 页面布局").selectOption("double");

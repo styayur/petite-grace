@@ -260,12 +260,13 @@ export function PdfReader({
   useEffect(() => {
     let cancelled = false;
     let loadedDocument: PDFDocumentProxy | null = null;
+    const abortController = new AbortController();
     setLoading(true);
     setError(null);
     setPdfDocument(null);
     setRestored(false);
     void Promise.all([
-      adapter.fetchResourceBytes(resource),
+      adapter.fetchResourceBytes(resource, { signal: abortController.signal }),
       readingRepository.get(docId).catch(() => undefined),
     ])
       .then(async ([bytes, saved]) => {
@@ -302,6 +303,7 @@ export function PdfReader({
       });
     return () => {
       cancelled = true;
+      abortController.abort();
       if (loadedDocument) void loadedDocument.loadingTask.destroy();
     };
   }, [resource, adapter, docId]);

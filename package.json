@@ -25,13 +25,16 @@
     "acceptance": "node scripts/run-acceptance.mjs"
   },
   "dependencies": {
+    "crypto-js": "^4.2.0",
     "fflate": "0.8.3",
+    "hls.js": "^1.7.4",
     "idb": "8.0.4",
     "pdfjs-dist": "6.5.438",
     "preact": "10.29.8"
   },
   "devDependencies": {
     "@playwright/test": "1.65.0",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "24.10.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "27.0.1",

@@ -8,6 +8,7 @@ import { DownloadIcon, FileIcon } from "../ui/icons";
 import { resourceKindLabel } from "../ui/format";
 import { PdfReader } from "./pdf/PdfReader";
 import { PptxReader } from "./presentation/PptxReader";
+import { VideoReader } from "./video/VideoReader";
 
 interface ResourceViewerProps {
   resource: ResourceRecord | null;
@@ -186,19 +187,7 @@ export function ResourceViewer({
 
   if (resource.kind === "video") {
     return (
-      <div class="pg-empty">
-        <div class="pg-empty-card">
-          <h2>{resource.title}</h2>
-          <p>视频资源保留平台播放能力，不在工作区内重复实现受限播放器。</p>
-          <button
-            class="pg-button pg-button-primary"
-            type="button"
-            onClick={() => void onDownload(resource)}
-          >
-            <DownloadIcon /> 下载视频
-          </button>
-        </div>
-      </div>
+      <VideoReader key={resource.id} resource={resource} adapter={adapter} onNotify={onNotify} />
     );
   }
 

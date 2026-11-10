@@ -2,6 +2,19 @@
 
 All notable changes are recorded here. The project follows semantic versioning for release tags.
 
+## [0.5.0-rc.2] - 2026-11-10
+
+### Fixed
+
+- Corrected chapter ordering with platform, natural chapter-number and local ordering modes
+- Added Chinese/Arabic mixed-number chapter sorting while preserving unnumbered chapter positions
+- Made long resource titles multiline, expandable and touch/keyboard accessible
+- Added resizable, persistent left and right side panes
+- Added encrypted Xiaoya file URL decryption and typed authorized resource resolution
+- Added signed CDN validation, preview-only handling, expiry classification and CORS fallback
+- Added in-app MP4/native HLS/hls.js video playback with resume, speed, fullscreen and PiP
+- Added release acceptance diagnostics for zero-job GitHub Actions retries
+
 ## [0.5.0-rc.1] - 2026-11-10
 
 ### Added

@@ -2,11 +2,11 @@
 
 > A lightweight course companion for university learners.
 
-Petite Grace brings chapter navigation, course-resource downloads, PDF/PPT reading, exercise study aids, bring-your-own-key LLM assistance, highlights, notes, and review into one low-distraction workspace. The first supported platform is Xiaoya (`*.ai-augmented.com`).
+Petite Grace brings chapter navigation with natural/local ordering, authorized resource resolution, PDF/PPT reading, MP4/HLS video playback, exercise study aids, bring-your-own-key LLM assistance, highlights, notes, and review into one low-distraction workspace. The first supported platform is Xiaoya (`*.ai-augmented.com`).
 
 ## Status
 
-`v0.5.0-rc.1` is a Release Candidate. Automated verification passes, but live Xiaoya acceptance remains `NOT_VERIFIED`, so this repository does not claim a Stable release. Machine-readable evidence is under `docs/acceptance/`.
+`v0.5.0-rc.2` is a Real-World Compatibility Release Candidate. Automated verification passes, but live Xiaoya acceptance remains `NOT_VERIFIED`, so this repository does not claim a Stable release. Machine-readable evidence is under `docs/acceptance/`.
 
 ## Screenshots
 

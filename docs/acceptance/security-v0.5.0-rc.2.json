@@ -1,0 +1,10 @@
+{
+  "version": "0.5.0-rc.2",
+  "command": "npm audit --audit-level=high",
+  "status": "passed",
+  "vulnerabilities": 0,
+  "licenseInventory": "passed",
+  "productionLicenses": ["Apache-2.0", "ISC", "MIT"],
+  "secretScan": "no credential-like literals found in tracked source outside dependency lock",
+  "generatedAt": "2026-11-10"
+}

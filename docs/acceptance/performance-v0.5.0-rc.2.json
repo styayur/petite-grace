@@ -1,0 +1,13 @@
+{
+  "version": "0.5.0-rc.2",
+  "status": "passed",
+  "pdfFixturePages": 30,
+  "virtualizationAssertion": "rendered canvas count < 12",
+  "pdfSearch": "full-text search located page 3",
+  "pdfLayoutSwitch": "single -> double passed",
+  "readingStateRestore": "page 3 restored after reload",
+  "annotationZoomStability": "highlight remained visible after fit-page switch",
+  "narrowViewport": "480x820 passed",
+  "paneResizePersistence": "left width persisted after reload",
+  "source": "tests/e2e/*.spec.ts"
+}

@@ -1,0 +1,14 @@
+{
+  "version": "0.5.0-rc.2",
+  "typecheck": "passed",
+  "unit": "passed",
+  "integration": "passed",
+  "e2e": "passed",
+  "security": "passed",
+  "licenses": "passed",
+  "build": "passed",
+  "realPlatform": "not_verified",
+  "releaseGate": "blocked",
+  "blockers": ["real-platform-acceptance"],
+  "generatedAt": "2026-11-10T05:05:18.689Z"
+}

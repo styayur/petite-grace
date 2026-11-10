@@ -4,12 +4,14 @@ Petite Grace is MIT licensed. This file records runtime dependencies and the ref
 
 ## Runtime dependencies
 
-| Dependency            | License    | Use                                   |
-| --------------------- | ---------- | ------------------------------------- |
-| Preact                | MIT        | Lightweight UI rendering              |
-| idb                   | ISC        | IndexedDB wrapper                     |
-| fflate                | MIT        | In-browser ZIP/PPTX container parsing |
-| PDF.js (`pdfjs-dist`) | Apache-2.0 | PDF rendering and text layer          |
+| Dependency             | License    | Use                                   |
+| ---------------------- | ---------- | ------------------------------------- |
+| Preact                 | MIT        | Lightweight UI rendering              |
+| idb                    | ISC        | IndexedDB wrapper                     |
+| fflate                 | MIT        | In-browser ZIP/PPTX container parsing |
+| PDF.js (`pdfjs-dist`)  | Apache-2.0 | PDF rendering and text layer          |
+| CryptoJS (`crypto-js`) | MIT        | Legacy platform file-URL decryption   |
+| hls.js                 | Apache-2.0 | Authorized HLS video playback         |
 
 Exact resolved versions are recorded in `package-lock.json`.
 

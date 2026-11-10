@@ -13,6 +13,8 @@
 - 480×820 narrow viewport
 - Light theme
 - PDF continuous/virtualized rendering
+- MP4/native HLS/hls.js video initialization
+- Signed-resource security boundaries
 - Exercise state persistence
 - Annotation persistence and zoom stability
 - Review workflow

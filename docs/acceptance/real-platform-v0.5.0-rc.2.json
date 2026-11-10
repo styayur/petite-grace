@@ -1,0 +1,15 @@
+{
+  "version": "0.5.0-rc.2",
+  "status": "not_verified",
+  "attempted": true,
+  "browser": "Chrome",
+  "tool": "Windows Computer Use",
+  "reason": "Computer Use stopped because it could not determine the active Chrome URL with sufficient confidence. No authenticated course inspection or real-platform evidence was produced.",
+  "screenshotProvidedToAgent": false,
+  "blockers": [
+    "real-platform-course-ordering",
+    "real-platform-preview-only-pdf",
+    "real-platform-video-playback",
+    "real-platform-credential-boundary-observation"
+  ]
+}

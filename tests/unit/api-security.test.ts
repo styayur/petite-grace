@@ -66,7 +66,7 @@ describe("Xiaoya URL and credential boundaries", () => {
         url: null,
         sourceMetadata: {},
       }),
-    ).rejects.toMatchObject({ code: "UNTRUSTED_DOWNLOAD_URL" });
+    ).rejects.toMatchObject({ code: "UNTRUSTED_RESOURCE_ORIGIN" });
 
     const platformCall = calls.find((call) => call.url.includes("/cloud/file_url/"));
     expect(platformCall?.url.startsWith("https://course.ai-augmented.com/")).toBe(true);

@@ -23,13 +23,18 @@ test("opens the workspace and navigates chapters and resources", async ({ page }
 test("renders a continuous PDF, switches layout and restores progress", async ({ page }) => {
   await page.goto("/tests/harness/");
   await expect(page.locator(".pg-pdf-page")).toHaveCount(30);
-  await expect(page.locator(".pg-pdf-page canvas"))
-    .toHaveCount(2, { timeout: 5000 })
-    .catch(() => undefined);
+  await expect
+    .poll(async () => page.locator(".pg-pdf-page canvas").count(), { timeout: 5000 })
+    .toBeLessThan(12);
   await expect(page.getByLabel("第 1 页")).toBeVisible();
   await page.getByLabel("PDF 页面布局").selectOption("double");
   await expect(page.locator(".pg-pdf-scroll")).toHaveAttribute("data-layout", "double");
 
+  await page.getByLabel("搜索 PDF 全文").fill("Petite Grace PDF page 3");
+  await page.getByRole("button", { name: "执行搜索" }).click();
+  await expect(page.locator(".pg-search-result").first()).toBeVisible();
+  await page.locator(".pg-search-result").first().click();
+  await expect(page.getByLabel("跳转页码")).toHaveValue("3");
   await page.getByLabel("跳转页码").fill("3");
   await page.getByLabel("跳转页码").press("Enter");
   await expect(page.getByLabel("跳转页码")).toHaveValue("3");

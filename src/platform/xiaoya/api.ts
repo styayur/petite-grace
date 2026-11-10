@@ -1,8 +1,24 @@
 import { mapCourseSnapshot } from "./mapping";
-import type { CourseAdapter, CourseSnapshot, ResourceRecord, XiaoyaVisitData } from "./types";
+import type {
+  AuthorizedPlayback,
+  AuthorizedResource,
+  CourseAdapter,
+  CourseSnapshot,
+  ResourceAccessIntent,
+  ResourceRecord,
+  XiaoyaVisitData,
+} from "./types";
+import { resolveAliyunVodPlayback } from "./video";
+import {
+  authorizedResourceFromUrl,
+  decryptXiaoyaFileUrl,
+  fetchAuthorizedResourceBytes,
+  DEFAULT_RESOURCE_HOST_SUFFIXES,
+  ResourceAccessError,
+} from "./resource";
 
 const COURSE_PATH_PATTERN = /\/app\/jx-web\/mycourse\/(\d{10,})/;
-const DEFAULT_HOST_SUFFIXES = ["ai-augmented.com"];
+const DEFAULT_HOST_SUFFIXES = DEFAULT_RESOURCE_HOST_SUFFIXES;
 const MAX_JSON_BYTES = 8 * 1024 * 1024;
 
 export class XiaoyaApiError extends Error {
@@ -170,44 +186,181 @@ export class XiaoyaApiClient implements CourseAdapter {
     });
   }
 
-  async resolveResourceUrl(resource: ResourceRecord): Promise<string> {
-    if (resource.url && isAllowedResourceUrl(resource.url, this.allowedResourceHosts)) {
-      return resource.url;
+  async resolveVideoPlayback(resource: ResourceRecord): Promise<AuthorizedPlayback> {
+    const fallbackPlatformUrl = this.sameOrigin(
+      `/app/jx-web/mycourse/${encodeURIComponent(resource.courseId)}?resourceId=${encodeURIComponent(resource.id)}`,
+    );
+    if (resource.url) {
+      const authorized = authorizedResourceFromUrl({
+        rawUrl: resource.url,
+        intent: "preview",
+        allowedHostSuffixes: this.allowedResourceHosts,
+        now: this.now(),
+      });
+      return {
+        url: authorized.url,
+        kind: /\.m3u8(?:$|\?)/i.test(authorized.url) ? "hls" : "mp4",
+        expiresAt: authorized.expiresAt,
+        requiresPlatformAuth: resource.url.startsWith(this.location.origin),
+        fallbackPlatformUrl,
+      };
+    }
+
+    let videoId = resource.videoId ?? null;
+    if (!videoId) {
+      const resourceEnvelope = await this.requestJson(
+        `/api/jx-iresource/resource/queryResource?node_id=${encodeURIComponent(resource.id)}`,
+      );
+      const resourceData = resourceEnvelope.data as
+        { resource?: { video_id?: string | number; videoId?: string | number } } | undefined;
+      const rawVideoId = resourceData?.resource?.video_id ?? resourceData?.resource?.videoId;
+      videoId = rawVideoId ? String(rawVideoId) : null;
+    }
+    if (!videoId) {
+      throw new ResourceAccessError("NO_RESOURCE_ID", "该视频没有可用的播放标识");
+    }
+
+    const authEnvelope = await this.requestJson(
+      `/api/jx-oresource/vod/video/play_auth/${encodeURIComponent(videoId)}?is_public=1`,
+    );
+    const authData = authEnvelope.data as
+      | {
+          private_vod?: Array<{
+            private_url?: string;
+            url?: string;
+            play_url?: string;
+            format?: string;
+          }>;
+          play_auth?: string;
+          play_url?: string;
+          video_url?: string;
+          url?: string;
+        }
+      | undefined;
+
+    let rawUrl: string | null = null;
+    let kind: "mp4" | "hls" = "mp4";
+    const privateVod = authData?.private_vod?.find(
+      (item) => item.private_url || item.url || item.play_url,
+    );
+    if (privateVod) {
+      rawUrl = privateVod.private_url ?? privateVod.url ?? privateVod.play_url ?? null;
+      if (/\.m3u8(?:$|\?)/i.test(rawUrl ?? "") || privateVod.format === "m3u8") kind = "hls";
+    } else if (authData?.play_auth) {
+      const resolved = await resolveAliyunVodPlayback(authData.play_auth);
+      rawUrl = resolved.url;
+      kind = resolved.kind;
+    } else {
+      rawUrl = authData?.play_url ?? authData?.video_url ?? authData?.url ?? null;
+      if (/\.m3u8(?:$|\?)/i.test(rawUrl ?? "")) kind = "hls";
+    }
+    if (!rawUrl) {
+      throw new ResourceAccessError("UNSUPPORTED_RESOURCE_URL", "平台没有返回可用视频播放地址");
+    }
+    const authorized = authorizedResourceFromUrl({
+      rawUrl,
+      intent: "preview",
+      requiresPlatformAuth: rawUrl.startsWith(this.location.origin),
+      allowedHostSuffixes: this.allowedResourceHosts,
+      now: this.now(),
+    });
+    return {
+      url: authorized.url,
+      kind,
+      expiresAt: authorized.expiresAt,
+      requiresPlatformAuth: authorized.requiresPlatformAuth,
+      fallbackPlatformUrl,
+    };
+  }
+  async resolveAuthorizedResource(
+    resource: ResourceRecord,
+    intent: ResourceAccessIntent = "preview",
+  ): Promise<AuthorizedResource> {
+    if (resource.url) {
+      return authorizedResourceFromUrl({
+        rawUrl: resource.url,
+        intent,
+        previewOnly: false,
+        requiresPlatformAuth: resource.url.startsWith(this.location.origin),
+        source: resource.url.startsWith(this.location.origin) ? "platform-file-access" : "direct",
+        allowedHostSuffixes: this.allowedResourceHosts,
+        now: this.now(),
+      });
     }
     if (!resource.quoteId) {
-      throw new XiaoyaApiError("NO_DOWNLOAD_ID", "该资源没有可用的下载标识");
+      throw new ResourceAccessError("NO_RESOURCE_ID", "该资源没有可用的文件标识");
     }
+
     const envelope = await this.requestJson(
       `/api/jx-oresource/cloud/file_url/${encodeURIComponent(resource.quoteId)}`,
     );
     const data = envelope.data as
-      { url?: string; is_encryption?: boolean | number | string } | undefined;
-    if (!data?.url) {
-      throw new XiaoyaApiError("NO_DOWNLOAD_URL", "平台没有返回下载地址");
-    }
-    if (data.is_encryption && data.is_encryption !== "0" && data.is_encryption !== 0) {
-      throw new XiaoyaApiError(
-        "ENCRYPTED_DOWNLOAD_URL",
-        "平台返回了加密下载地址；为避免把登录凭证发给外域，请使用平台原始下载入口",
+      | {
+          url?: string;
+          is_encryption?: boolean | number | string;
+          preview_only?: boolean;
+          is_preview?: boolean;
+          can_download?: boolean;
+          download_permission?: boolean;
+          expires_at?: string;
+          file_access_id?: string;
+        }
+      | undefined;
+
+    let rawUrl = data?.url;
+    if (!rawUrl) {
+      const accessId = data?.file_access_id ?? resource.quoteId;
+      rawUrl = this.sameOrigin(
+        `/api/jx-oresource/cloud/file_access/${encodeURIComponent(accessId)}`,
       );
     }
-    if (!isAllowedResourceUrl(data.url, this.allowedResourceHosts)) {
-      throw new XiaoyaApiError("UNTRUSTED_DOWNLOAD_URL", "下载地址未通过来源校验");
+    if (data?.is_encryption && data.is_encryption !== "0" && data.is_encryption !== 0) {
+      rawUrl = decryptXiaoyaFileUrl(rawUrl);
     }
-    return data.url;
+    const previewOnly = Boolean(
+      data?.preview_only ||
+      data?.is_preview ||
+      data?.can_download === false ||
+      data?.download_permission === false,
+    );
+    const authorized = authorizedResourceFromUrl({
+      rawUrl,
+      intent,
+      previewOnly,
+      requiresPlatformAuth: rawUrl.startsWith(this.location.origin),
+      source: rawUrl.startsWith(this.location.origin) ? "platform-file-access" : undefined,
+      allowedHostSuffixes: this.allowedResourceHosts,
+      now: this.now(),
+    });
+    if (data?.expires_at) authorized.expiresAt = data.expires_at;
+    return authorized;
   }
 
-  async fetchResourceBytes(resource: ResourceRecord): Promise<ArrayBuffer> {
-    const url = await this.resolveResourceUrl(resource);
-    const response = await this.fetchImpl(url, {
-      method: "GET",
-      credentials: "omit",
-      redirect: "follow",
-      signal: AbortSignal.timeout(120_000),
+  async resolveResourceUrl(
+    resource: ResourceRecord,
+    intent: ResourceAccessIntent = "download",
+  ): Promise<string> {
+    return (await this.resolveAuthorizedResource(resource, intent)).url;
+  }
+
+  async fetchResourceBytes(
+    resource: ResourceRecord,
+    options: {
+      signal?: AbortSignal;
+      range?: { start: number; end: number };
+      maxBytes?: number;
+    } = {},
+  ): Promise<ArrayBuffer> {
+    const authorized = await this.resolveAuthorizedResource(resource, "preview");
+    return fetchAuthorizedResourceBytes(authorized, {
+      fetchImpl: this.fetchImpl,
+      signal: options.signal,
+      range: options.range,
+      maxBytes: options.maxBytes,
+      allowedHostSuffixes: this.allowedResourceHosts,
+      platformOrigin: this.location.origin,
+      sessionToken: this.getSessionToken(),
+      requiresPlatformAuth: authorized.requiresPlatformAuth,
     });
-    if (!response.ok) {
-      throw new XiaoyaApiError("DOWNLOAD_HTTP_ERROR", `文件读取失败（HTTP ${response.status}）`);
-    }
-    return response.arrayBuffer();
   }
 }

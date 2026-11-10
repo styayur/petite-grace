@@ -35,6 +35,7 @@ function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
 
   useEffect(() => {
     let cancelled = false;
+    const abortController = new AbortController();
     if (urlRef.current) {
       URL.revokeObjectURL(urlRef.current);
       urlRef.current = null;
@@ -44,7 +45,7 @@ function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
     if (!resource || resource.kind !== "image") return;
     setLoading(true);
     void adapter
-      .fetchResourceBytes(resource)
+      .fetchResourceBytes(resource, { signal: abortController.signal })
       .then((bytes) => {
         if (cancelled) return;
         const objectUrl = URL.createObjectURL(
@@ -62,6 +63,7 @@ function useImageUrl(resource: ResourceRecord | null, adapter: CourseAdapter) {
       });
     return () => {
       cancelled = true;
+      abortController.abort();
       if (urlRef.current) {
         URL.revokeObjectURL(urlRef.current);
         urlRef.current = null;

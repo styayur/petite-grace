@@ -129,7 +129,12 @@ export function inferResourceKind(
   ) {
     return "image";
   }
-  if (mime.startsWith("video/") || ["mp4", "webm", "mov", "mkv", "m4v"].includes(ext)) {
+  if (
+    mime.startsWith("video/") ||
+    /\bvideo\b/.test(typeText) ||
+    Boolean(record.video_id || record.videoId) ||
+    ["mp4", "webm", "mov", "mkv", "m4v"].includes(ext)
+  ) {
     return "video";
   }
   if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "archive";
@@ -263,12 +268,14 @@ export function mapCourseSnapshot(input: {
           asString(record.quoteId) ??
           asString(record.file_id) ??
           asString(record.fileId),
+        videoId: asString(record.video_id) ?? asString(record.videoId),
         url: asString(record.url) ?? asString(record.file_url) ?? null,
         sourceMetadata: {
           type: asString(record.type),
           groupId: asString(record.group_id) ?? asString(record.groupId),
           createdAt: asString(record.created_at) ?? asString(record.createdAt),
           updatedAt: asString(record.updated_at) ?? asString(record.updatedAt),
+          videoId: asString(record.video_id) ?? asString(record.videoId),
         },
       });
     }
@@ -332,6 +339,7 @@ export function mapCourseSnapshot(input: {
     rootChapterIds,
     orphanResourceIds,
     sortEvidence: explicitFieldCount > 0 ? "explicit-order-field" : "source-order-fallback",
+    appliedOrder: "platform",
     fetchedAt: input.fetchedAt ?? new Date().toISOString(),
     source: input.source ?? "fixture",
   };

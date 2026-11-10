@@ -8,6 +8,14 @@ import {
   serializeAnnotations,
 } from "../annotations/service";
 import type { CourseAdapter, CourseSnapshot, ResourceRecord } from "../platform/xiaoya/types";
+import {
+  applyCourseOrdering,
+  moveChapterInOrder,
+  orderingLabel,
+  type ChapterOrderDirection,
+  type ChapterOrderOverrides,
+  type CourseSortMode,
+} from "../platform/xiaoya/ordering";
 import { ResourceViewer } from "../reader/ResourceViewer";
 import { saveBlob, DownloadQueue, type DownloadTask } from "../downloads/queue";
 import {
@@ -82,10 +90,18 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     DEFAULT_READER_PREFERENCES,
   );
   const [showReaderPreferences, setShowReaderPreferences] = useState(false);
+  const [chapterOrderMode, setChapterOrderMode] = useState<CourseSortMode>("platform");
+  const [chapterOrderOverrides, setChapterOrderOverrides] = useState<ChapterOrderOverrides>({});
+  const [panelWidths, setPanelWidths] = useState({ left: 300, right: 288 });
+
+  const orderedCourse = useMemo(
+    () => (course ? applyCourseOrdering(course, chapterOrderMode, chapterOrderOverrides) : null),
+    [course, chapterOrderMode, chapterOrderOverrides],
+  );
 
   const selectedResource = useMemo(
-    () => course?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
-    [course, selectedResourceId],
+    () => orderedCourse?.resources.find((resource) => resource.id === selectedResourceId) ?? null,
+    [orderedCourse, selectedResourceId],
   );
 
   const downloadQueue = useMemo(
@@ -162,6 +178,86 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
     };
   }, [adapter, initialCourse]);
 
+  useEffect(() => {
+    void settingsRepository
+      .get("panelWidths", { left: 300, right: 288 })
+      .then((value) => {
+        if (
+          value &&
+          typeof value === "object" &&
+          Number.isFinite((value as { left?: number }).left) &&
+          Number.isFinite((value as { right?: number }).right)
+        ) {
+          setPanelWidths(value as { left: number; right: number });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!course) return;
+    let cancelled = false;
+    void Promise.all([
+      settingsRepository.get<CourseSortMode>(`chapterOrderMode:${course.courseId}`, "platform"),
+      settingsRepository.get<ChapterOrderOverrides>(`chapterOrderOverrides:${course.courseId}`, {}),
+    ])
+      .then(([mode, overrides]) => {
+        if (cancelled) return;
+        setChapterOrderMode(
+          mode === "chapter-number" || mode === "local" || mode === "platform" ? mode : "platform",
+        );
+        setChapterOrderOverrides(overrides && typeof overrides === "object" ? overrides : {});
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [course?.courseId]);
+
+  const changeChapterOrderMode = (mode: CourseSortMode) => {
+    setChapterOrderMode(mode);
+    if (course) void settingsRepository.put(`chapterOrderMode:${course.courseId}`, mode);
+  };
+
+  const moveChapter = (chapterId: string, direction: ChapterOrderDirection) => {
+    if (!course || !orderedCourse) return;
+    const next = moveChapterInOrder(orderedCourse, chapterOrderOverrides, chapterId, direction);
+    setChapterOrderOverrides(next);
+    setChapterOrderMode("local");
+    void settingsRepository.put(`chapterOrderOverrides:${course.courseId}`, next);
+    void settingsRepository.put(`chapterOrderMode:${course.courseId}`, "local");
+  };
+
+  const startColumnResize = (side: "left" | "right", event: PointerEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    const startX = event.clientX;
+    const startWidth = panelWidths[side];
+    const move = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const nextWidth =
+        side === "left"
+          ? Math.min(520, Math.max(220, startWidth + delta))
+          : Math.min(520, Math.max(220, startWidth - delta));
+      setPanelWidths((previous) => ({ ...previous, [side]: nextWidth }));
+    };
+    const up = (upEvent: PointerEvent) => {
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", up);
+      target.removeEventListener("pointercancel", up);
+      const delta = upEvent.clientX - startX;
+      const nextWidth =
+        side === "left"
+          ? Math.min(520, Math.max(220, startWidth + delta))
+          : Math.min(520, Math.max(220, startWidth - delta));
+      const next = { ...panelWidths, [side]: nextWidth };
+      setPanelWidths(next);
+      void settingsRepository.put("panelWidths", next);
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", up);
+    target.addEventListener("pointercancel", up);
+  };
   useEffect(() => {
     if (!course || selectedResourceId) return;
     const firstChapter = course.rootChapterIds[0] ?? null;
@@ -378,7 +474,7 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
   ]);
   const selectChapter = (chapterId: string) => {
     setActiveChapterId(chapterId);
-    const nextResource = course?.resources
+    const nextResource = orderedCourse?.resources
       .filter((resource) => resource.chapterId === chapterId)
       .sort((a, b) => a.displayOrder - b.displayOrder)[0];
     if (nextResource) setSelectedResourceId(nextResource.id);
@@ -532,16 +628,31 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
         </div>
       </header>
 
-      <div class={`pg-workspace${leftOpen ? "" : " no-left"}${rightOpen ? "" : " no-right"}`}>
-        {leftOpen && course ? (
+      <div
+        class={`pg-workspace${leftOpen ? "" : " no-left"}${rightOpen ? "" : " no-right"}`}
+        style={`--pg-left-width:${panelWidths.left}px;--pg-right-width:${panelWidths.right}px`}
+      >
+        <div
+          class="pg-vsplitter pg-vsplitter-left"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="调整章节栏宽度"
+          hidden={!leftOpen}
+          onPointerDown={(event) => startColumnResize("left", event)}
+        />
+        {leftOpen && orderedCourse ? (
           <CourseSidebar
-            course={course}
+            course={orderedCourse}
             activeChapterId={activeChapterId}
             selectedResourceId={selectedResourceId}
             defaultExpanded
             onChapterSelect={selectChapter}
             onResourceSelect={selectResource}
             onDownload={downloadResource}
+            orderMode={chapterOrderMode}
+            orderingLabelText={orderedCourse ? orderingLabel(orderedCourse, chapterOrderMode) : ""}
+            onOrderModeChange={changeChapterOrderMode}
+            onMoveChapter={moveChapter}
           />
         ) : leftOpen ? (
           <aside class="pg-sidebar">
@@ -583,6 +694,14 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
           </div>
         </main>
 
+        <div
+          class="pg-vsplitter pg-vsplitter-right"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="调整信息栏宽度"
+          hidden={!rightOpen}
+          onPointerDown={(event) => startColumnResize("right", event)}
+        />
         {rightOpen ? (
           <aside class="pg-inspector" aria-label="资源信息">
             <div>
@@ -590,7 +709,7 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
               <dl class="pg-info-list">
                 <div class="pg-info-row">
                   <dt>课程</dt>
-                  <dd>{course?.title ?? "—"}</dd>
+                  <dd>{orderedCourse?.title ?? "—"}</dd>
                 </div>
                 <div class="pg-info-row">
                   <dt>资源</dt>
@@ -603,17 +722,14 @@ export function App({ adapter, initialCourse, onClose }: AppProps) {
                 <div class="pg-info-row">
                   <dt>章节</dt>
                   <dd>
-                    {course?.chapters.find((chapter) => chapter.id === selectedResource?.chapterId)
-                      ?.title ?? "未归档"}
+                    {orderedCourse?.chapters.find(
+                      (chapter) => chapter.id === selectedResource?.chapterId,
+                    )?.title ?? "未归档"}
                   </dd>
                 </div>
                 <div class="pg-info-row">
                   <dt>排序依据</dt>
-                  <dd>
-                    {course?.sortEvidence === "explicit-order-field"
-                      ? "平台显式顺序字段"
-                      : "平台原始顺序（回退）"}
-                  </dd>
+                  <dd>{orderedCourse ? orderingLabel(orderedCourse, chapterOrderMode) : "—"}</dd>
                 </div>
                 <div class="pg-info-row">
                   <dt>加载来源</dt>

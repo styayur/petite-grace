@@ -4,9 +4,22 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
   release:
@@ -15,6 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -27,7 +41,7 @@ jobs:
         id: channel
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           GATE=$(node -e "const a=require('./artifacts/acceptance-${VERSION}.json'); process.stdout.write(a.releaseGate)")
           echo "gate=$GATE" >> "$GITHUB_OUTPUT"
           if [ "$GATE" = "ready" ]; then
@@ -40,13 +54,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "${GITHUB_REF_NAME}" \
+          VERSION="${RELEASE_TAG#v}"
+          gh release create "${RELEASE_TAG}" \
             "artifacts/petite-grace.user.js" \
             "artifacts/petite-grace.meta.js" \
             "artifacts/petite-grace-v${VERSION}-source.zip" \
             artifacts/SHA256SUMS.txt \
             "artifacts/acceptance-${VERSION}.json" \
-            --title "Petite Grace ${GITHUB_REF_NAME}" \
-            --notes-file "docs/releases/${GITHUB_REF_NAME}.md" \
+            --title "Petite Grace ${RELEASE_TAG}" \
+            --notes-file "docs/releases/${RELEASE_TAG}.md" \
             ${{ steps.channel.outputs.flag }}

@@ -6,7 +6,7 @@ Petite Grace 将课程章节导航、课件下载、PDF/PPT 阅读、作业理�
 
 ## 当前状态
 
-`v0.5.0-rc.1` 是 Release Candidate。自动化验证已通过，但真实小雅平台验收仍为 `NOT_VERIFIED`，因此不会伪造 Stable 发布。验收状态以 `docs/acceptance/` 中的机器可读记录为准。
+`v0.5.0-rc.2` 是 Real-World Compatibility Release Candidate。自动化验证已通过，但真实小雅平台验收仍为 `NOT_VERIFIED`，因此不会伪造 Stable 发布。验收状态以 `docs/acceptance/` 中的机器可读记录为准。
 
 ## 界面
 
@@ -18,8 +18,11 @@ Petite Grace 将课程章节导航、课件下载、PDF/PPT 阅读、作业理�
 
 ## 核心能力
 
-- 章节树与资源树分离的课程导航，保留平台顺序并提供稳定回退
+- 章节树与资源树分离的课程导航，支持平台顺序、中文/阿拉伯数字自然排序和本地自定义顺序
+- 长资源标题多行显示与展开，左右面板可调整宽度并记忆
+- 加密资源地址解析、签名 CDN 校验和受权 CORS 回退
 - PDF 单列/双列连续滚动阅读、文本层、搜索、缩放与进度恢复
+- MP4、原生 HLS 与 hls.js 视频播放，支持倍速、全屏、画中画和进度恢复
 - PPTX 基础离线预览，明确提示不支持的复杂版式
 - 划线、短注释、集中标注侧栏与导入导出
 - Groq、OpenRouter、Gemini 和 OpenAI-compatible Provider

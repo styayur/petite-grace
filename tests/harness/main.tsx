@@ -5,20 +5,30 @@ import type {
   CourseSnapshot,
   ResourceRecord,
 } from "../../src/platform/xiaoya/types";
-import { courseFixture } from "../fixtures/course";
+import { courseFixture, orderingCourseFixture } from "../fixtures/course";
 import { createMinimalPdf } from "../fixtures/pdf";
 import { createMinimalPptx } from "../fixtures/pptx";
 import { exerciseHtml } from "../fixtures/exercises";
 
 class FixtureAdapter implements CourseAdapter {
+  constructor(private readonly course: CourseSnapshot) {}
   getCourseId(): string {
-    return courseFixture.courseId;
+    return this.course.courseId;
   }
   async loadCourse(): Promise<CourseSnapshot> {
-    return courseFixture;
+    return this.course;
   }
   async resolveResourceUrl(resource: ResourceRecord): Promise<string> {
     return `https://course.ai-augmented.com/fixture/${resource.id}`;
+  }
+  async resolveVideoPlayback(resource: ResourceRecord) {
+    return {
+      url: "data:video/mp4;base64,AAAA",
+      kind: "mp4" as const,
+      expiresAt: null,
+      requiresPlatformAuth: false,
+      fallbackPlatformUrl: `https://course.ai-augmented.com/fixture/${resource.id}`,
+    };
   }
   async fetchResourceBytes(resource: ResourceRecord): Promise<ArrayBuffer> {
     if (resource.kind === "pdf") return createMinimalPdf(30);
@@ -38,7 +48,10 @@ class FixtureAdapter implements CourseAdapter {
   }
 }
 
+const selectedCourse = new URLSearchParams(window.location.search).get("ordering")
+  ? orderingCourseFixture
+  : courseFixture;
 render(
-  <App adapter={new FixtureAdapter()} initialCourse={courseFixture} />,
+  <App adapter={new FixtureAdapter(selectedCourse)} initialCourse={selectedCourse} />,
   document.getElementById("app")!,
 );

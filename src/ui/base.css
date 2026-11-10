@@ -1557,3 +1557,246 @@ button {
 .pg-reader-preferences-body input[type="range"] {
   width: 100%;
 }
+
+/* rc.2 sidebar ordering and resizable panes */
+.pg-workspace {
+  position: relative;
+}
+
+.pg-vsplitter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.pg-vsplitter::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background var(--pg-transition);
+}
+
+.pg-vsplitter:hover::after,
+.pg-vsplitter:active::after {
+  background: var(--pg-accent);
+}
+
+.pg-vsplitter-left {
+  left: calc(var(--pg-left-width, 300px) - 4px);
+}
+
+.pg-vsplitter-right {
+  right: calc(var(--pg-right-width, 288px) - 4px);
+}
+
+.pg-vsplitter[hidden] {
+  display: none;
+}
+
+.pg-order-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.pg-order-control label {
+  color: var(--pg-text-tertiary);
+  font-size: 11px;
+}
+
+.pg-order-control .pg-select {
+  flex: 1;
+  min-width: 120px;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.pg-order-note {
+  width: 100%;
+  overflow: hidden;
+  color: var(--pg-text-tertiary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-tree-move-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--pg-transition);
+}
+
+.pg-tree-row:hover .pg-tree-move-actions,
+.pg-tree-row:focus-within .pg-tree-move-actions,
+.pg-tree-row.selected .pg-tree-move-actions {
+  opacity: 1;
+}
+
+.pg-tree-move-actions button {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--pg-border);
+  border-radius: 4px;
+  background: var(--pg-bg-raised);
+  color: var(--pg-text-secondary);
+  padding: 0;
+  line-height: 1;
+}
+
+.pg-tree-move-actions button:hover:not(:disabled) {
+  border-color: var(--pg-accent);
+  color: var(--pg-accent);
+}
+
+.pg-tree-move-actions button:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.pg-resource-row {
+  align-items: flex-start;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.pg-resource-label {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pg-resource-label.expanded {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.pg-resource-expand {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pg-text-tertiary);
+  padding: 0;
+}
+
+.pg-resource-expand:hover {
+  border-color: var(--pg-border);
+  background: var(--pg-bg-sunken);
+  color: var(--pg-text);
+}
+
+.pg-resource-meta {
+  padding-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .pg-vsplitter {
+    display: none;
+  }
+
+  .pg-resource-row {
+    min-height: 42px;
+  }
+
+  .pg-resource-label {
+    -webkit-line-clamp: 3;
+  }
+
+  .pg-tree-move-actions {
+    opacity: 1;
+  }
+}
+
+/* Video reader */
+.pg-video-reader {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: #0c1016;
+}
+
+.pg-video-stage {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.pg-video-stage video {
+  width: min(100%, 1200px);
+  max-height: calc(100vh - 160px);
+  background: #000;
+  border-radius: var(--pg-radius-md);
+  box-shadow: var(--pg-shadow-lg);
+}
+
+.pg-video-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--pg-bg-raised);
+  border-top: 1px solid var(--pg-border);
+}
+
+.pg-video-toolbar strong {
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-video-speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pg-text-secondary);
+  font-size: 12px;
+}
+
+.pg-video-speed .pg-select {
+  width: 80px;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+
+.pg-video-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .pg-video-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .pg-video-toolbar strong {
+    max-width: 100%;
+    width: 100%;
+  }
+}

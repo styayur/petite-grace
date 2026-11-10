@@ -1,3 +1,24 @@
+export type ResourceAccessIntent = "preview" | "file" | "download";
+export type AuthorizedResourceSource = "direct" | "signed-cdn" | "platform-file-access";
+
+export interface AuthorizedPlayback {
+  url: string;
+  kind: "mp4" | "hls";
+  expiresAt: string | null;
+  requiresPlatformAuth: boolean;
+  fallbackPlatformUrl: string;
+}
+
+export interface AuthorizedResource {
+  url: string;
+  intent: ResourceAccessIntent;
+  source: AuthorizedResourceSource;
+  previewOnly: boolean;
+  requiresPlatformAuth: boolean;
+  expiresAt: string | null;
+  canRange: boolean;
+}
+
 export type ResourceKind =
   "pdf" | "presentation" | "document" | "image" | "video" | "archive" | "exercise" | "unknown";
 
@@ -26,6 +47,7 @@ export interface ResourceRecord {
   kind: ResourceKind;
   mimeType: string | null;
   quoteId: string | null;
+  videoId?: string | null;
   url: string | null;
   sourceMetadata: Record<string, unknown>;
 }
@@ -53,6 +75,7 @@ export interface CourseSnapshot {
   rootChapterIds: string[];
   orphanResourceIds: string[];
   sortEvidence: "explicit-order-field" | "source-order-fallback";
+  appliedOrder?: "platform" | "chapter-number" | "local";
   fetchedAt: string;
   source: "live" | "fixture";
 }
@@ -60,6 +83,18 @@ export interface CourseSnapshot {
 export interface CourseAdapter {
   getCourseId(): string | null;
   loadCourse(courseId: string): Promise<CourseSnapshot>;
-  resolveResourceUrl(resource: ResourceRecord): Promise<string>;
-  fetchResourceBytes(resource: ResourceRecord): Promise<ArrayBuffer>;
+  resolveResourceUrl(resource: ResourceRecord, intent?: ResourceAccessIntent): Promise<string>;
+  resolveVideoPlayback?(resource: ResourceRecord): Promise<AuthorizedPlayback>;
+  resolveAuthorizedResource?(
+    resource: ResourceRecord,
+    intent?: ResourceAccessIntent,
+  ): Promise<AuthorizedResource>;
+  fetchResourceBytes(
+    resource: ResourceRecord,
+    options?: {
+      signal?: AbortSignal;
+      range?: { start: number; end: number };
+      maxBytes?: number;
+    },
+  ): Promise<ArrayBuffer>;
 }

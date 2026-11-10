@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { CourseSnapshot, ResourceRecord } from "../platform/xiaoya/types";
+import type { ChapterOrderDirection, CourseSortMode } from "../platform/xiaoya/ordering";
 import { downloadIcon, resourceKindLabel, searchIcon } from "./sidebar-utils";
 import { ChevronDown, ChevronRight, DownloadIcon, SearchIcon } from "../ui/icons";
 import { resourceKindLabel as kindLabel } from "../ui/format";
@@ -12,6 +13,10 @@ interface CourseSidebarProps {
   onChapterSelect: (chapterId: string) => void;
   onResourceSelect: (resource: ResourceRecord) => void;
   onDownload: (resource: ResourceRecord) => void | Promise<void>;
+  orderMode: CourseSortMode;
+  orderingLabelText: string;
+  onOrderModeChange: (mode: CourseSortMode) => void;
+  onMoveChapter: (chapterId: string, direction: ChapterOrderDirection) => void;
 }
 
 interface TreeProps extends CourseSidebarProps {
@@ -23,8 +28,17 @@ interface TreeProps extends CourseSidebarProps {
 }
 
 function ChapterTree(props: TreeProps) {
-  const { course, chapterId, depth, expanded, onToggle, query, activeChapterId, onChapterSelect } =
-    props;
+  const {
+    course,
+    chapterId,
+    depth,
+    expanded,
+    onToggle,
+    query,
+    activeChapterId,
+    onChapterSelect,
+    onMoveChapter,
+  } = props;
   const chapter = course.chapters.find((item) => item.id === chapterId);
   if (!chapter) return null;
   const children = chapter.childChapterIds
@@ -42,6 +56,10 @@ function ChapterTree(props: TreeProps) {
   });
   if (query && !matchesSelf && !hasMatchingDescendant) return null;
   const isOpen = expanded.has(chapter.id) || Boolean(query);
+  const siblings = chapter.parentId
+    ? (course.chapters.find((item) => item.id === chapter.parentId)?.childChapterIds ?? [])
+    : course.rootChapterIds;
+  const siblingIndex = siblings.indexOf(chapter.id);
   return (
     <div>
       <div
@@ -67,6 +85,32 @@ function ChapterTree(props: TreeProps) {
         </span>
         <span class="pg-tree-label">{chapter.title}</span>
         <span class="pg-badge">{chapter.resourceIds.length}</span>
+        <span class="pg-tree-move-actions">
+          <button
+            type="button"
+            title="上移章节"
+            aria-label={`上移章节：${chapter.title}`}
+            disabled={siblingIndex <= 0}
+            onClick={(event) => {
+              event.stopPropagation();
+              onMoveChapter(chapter.id, "up");
+            }}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            title="下移章节"
+            aria-label={`下移章节：${chapter.title}`}
+            disabled={siblingIndex < 0 || siblingIndex >= siblings.length - 1}
+            onClick={(event) => {
+              event.stopPropagation();
+              onMoveChapter(chapter.id, "down");
+            }}
+          >
+            ↓
+          </button>
+        </span>
       </div>
       {isOpen && children.length ? (
         <div class="pg-tree-children" role="group">
@@ -90,6 +134,8 @@ function ResourceRow({
   onSelect: () => void;
   onDownload: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLongTitle = resource.title.length > 34 || resource.title.includes("\\n");
   return (
     <div
       class={`pg-resource-row${selected ? " selected" : ""}`}
@@ -107,7 +153,26 @@ function ResourceRow({
       <span class="pg-resource-icon" aria-hidden="true">
         {kindLabel(resource.kind)}
       </span>
-      <span class="pg-resource-label">{resource.title}</span>
+      <span class={`pg-resource-label${expanded ? " expanded" : ""}`} title={resource.title}>
+        {resource.title}
+      </span>
+      {isLongTitle ? (
+        <button
+          type="button"
+          class="pg-resource-expand"
+          title={expanded ? "收起完整标题" : "展开完整标题"}
+          aria-label={
+            expanded ? `收起完整标题：${resource.title}` : `展开完整标题：${resource.title}`
+          }
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((value) => !value);
+          }}
+        >
+          {expanded ? <ChevronDown /> : <ChevronRight />}
+        </button>
+      ) : null}
       <span class="pg-resource-meta">{resourceKindLabel(resource.kind)}</span>
       <span class="pg-resource-actions">
         <button
@@ -134,6 +199,9 @@ export function CourseSidebar(props: CourseSidebarProps) {
     onChapterSelect,
     onResourceSelect,
     onDownload,
+    orderMode,
+    orderingLabelText,
+    onOrderModeChange,
   } = props;
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(course.rootChapterIds.slice(0, 2)),
@@ -195,6 +263,23 @@ export function CourseSidebar(props: CourseSidebarProps) {
           <span class="pg-section-title">章节</span>
           <span class="pg-spacer" />
           <span class="pg-badge">{course.chapters.length}</span>
+        </div>
+        <div class="pg-order-control">
+          <label for="pg-chapter-order">排序</label>
+          <select
+            id="pg-chapter-order"
+            class="pg-select"
+            value={orderMode}
+            onChange={(event) =>
+              onOrderModeChange((event.currentTarget as HTMLSelectElement).value as CourseSortMode)
+            }
+            title={orderingLabelText}
+          >
+            <option value="platform">平台顺序</option>
+            <option value="chapter-number">章节编号顺序</option>
+            <option value="local">本地自定义顺序</option>
+          </select>
+          <span class="pg-order-note">{orderingLabelText}</span>
         </div>
         <div class="pg-search-wrap">
           <div style={{ position: "relative" }}>

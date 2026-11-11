@@ -4,3 +4,6 @@ node_modules
 playwright-report
 test-results
 package-lock.json
+
+# gh-aw compiler-owned output; format sources and regenerate locks.
+.github/workflows/*.lock.yml

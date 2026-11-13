@@ -9,3 +9,4 @@ Open an issue or a pull request. GitHub runs this repository's existing checks o
 - A failed, skipped, cancelled, or missing required check keeps the pull request open.
 
 No model review, special approval command, or external service is required to understand or complete that path.
+Maintainer merges use GitHubs normal squash merge after the checks above are green.
